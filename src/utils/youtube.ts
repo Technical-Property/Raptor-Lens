@@ -224,9 +224,6 @@ export function getYouTubeChannelUrl(channelInput?: string, videoId: string = DE
   return `https://www.youtube.com/watch?v=${videoId || DEFAULT_CAMERA_VIDEO_ID}`;
 }
 
-export const HIKVISION_CAMERA_LAN_IP = 'http://192.168.0.167';
-export const HIKVISION_NVR_LAN_IP = 'http://192.168.0.188';
-
 export const isRtmpStreamKeyOrUrl = (val: string): boolean => {
   if (!val) return false;
   const trimmed = val.trim();

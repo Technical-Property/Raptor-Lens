@@ -719,69 +719,11 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                     tacticalAudio.playRadarPing(880);
                     setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
                   }}
-                  className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 border border-amber-500/50 text-amber-300 font-mono text-[10px] cursor-pointer transition-colors"
+                  className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-mono text-[10px] cursor-pointer transition-colors"
                 >
-                  + UK Peregrine Cam ({DEFAULT_CAMERA_VIDEO_ID})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    tacticalAudio.playRadarPing(880);
-                    setCustomVideoId('http://192.168.0.167/');
-                  }}
-                  className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 border border-cyan-500/50 text-cyan-300 font-mono text-[10px] cursor-pointer transition-colors"
-                >
-                  + Local IP Camera (192.168.0.167)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowIpCamHelp(!showIpCamHelp)}
-                  className="text-amber-400 hover:text-amber-300 underline cursor-pointer text-[10px] ml-auto font-sans"
-                >
-                  {showIpCamHelp ? 'Hide IP Guide' : 'How does linking IP cameras work?'}
+                  + Official Station Cam ({DEFAULT_CAMERA_VIDEO_ID})
                 </button>
               </div>
-
-              {/* Local IP Camera Notification Banner */}
-              {customVideoId && isLocalIpAddress(customVideoId) && (
-                <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 space-y-2 text-neutral-300">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <Wifi className="w-4 h-4 text-cyan-400" />
-                      <span className="font-bold text-cyan-300 font-mono text-xs">
-                        Local Wi-Fi Camera Detected: {formatLocalIpUrl(customVideoId)}
-                      </span>
-                    </div>
-                    <a
-                      href={formatLocalIpUrl(customVideoId)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-2.5 py-1 rounded bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-bold flex items-center gap-1 text-[11px] transition-colors cursor-pointer"
-                    >
-                      <span>Open Camera Portal</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                  <p className="text-[11px] leading-relaxed font-sans text-neutral-300">
-                    <strong>Local Network Link:</strong> <code>{formatLocalIpUrl(customVideoId)}</code> is an address on your private home router. You can click above to open and control its live view on your local Wi-Fi. However, modern browsers prevent secure HTTPS web pages from silently embedding insecure HTTP devices in iframes, and external visitors on the internet cannot reach private <code>192.168.x.x</code> addresses.
-                  </p>
-                </div>
-              )}
-
-              {/* Collapsible IP Cam Guide */}
-              {showIpCamHelp && (
-                <div className="p-3 rounded-xl bg-neutral-950/80 border border-neutral-800 space-y-2 text-[11px] font-sans text-neutral-300">
-                  <div className="font-bold text-amber-300 font-mono-tactical text-xs flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-amber-400" />
-                    <span>How to Stream Your Home Camera to RaptorLens Observers:</span>
-                  </div>
-                  <ol className="list-decimal list-inside space-y-1 text-neutral-400 leading-relaxed">
-                    <li><strong className="text-neutral-200">Local viewing:</strong> If you only want to check your own camera while using RaptorLens, clicking the link opens your camera web UI directly in a tab.</li>
-                    <li><strong className="text-neutral-200">Public broadcasting:</strong> Home IP cameras stream video via RTSP (e.g. <code>rtsp://192.168.0.167:554/stream1</code>). To share this with the public, use free software like <strong>OBS Studio</strong> (or your camera's RTMP setting) to stream to <strong>YouTube Live</strong> (Public or Unlisted).</li>
-                    <li><strong className="text-neutral-200">Embed in app:</strong> Paste your YouTube live stream URL or ID here, and every observer on RaptorLens will see your live feed!</li>
-                  </ol>
-                </div>
-              )}
             </div>
           )}
         </div>

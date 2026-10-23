@@ -53,8 +53,6 @@ import {
   EAGLE_LIVE_VIDEO_ID,
   isLocalIpAddress,
   formatLocalIpUrl,
-  HIKVISION_CAMERA_LAN_IP,
-  HIKVISION_NVR_LAN_IP,
   isRtmpStreamKeyOrUrl
 } from '../utils/youtube';
 
@@ -601,47 +599,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             <div className="space-y-2 pt-1 border-t border-neutral-800">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <label className="text-[11px] text-neutral-300 font-medium">
-                  Custom Stream Link, YouTube Video ID, or Station Hardware IP:
+                  Custom YouTube Stream Link or Video ID:
                 </label>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      tacticalAudio.playRadarPing(860);
-                      if (isDeviceCamActive) stopDeviceCamera();
-                      setCustomVideoId(HIKVISION_CAMERA_LAN_IP);
-                      setStreamMode('video');
-                    }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono border cursor-pointer transition-colors ${
-                      customVideoId === HIKVISION_CAMERA_LAN_IP
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 font-bold'
-                        : 'bg-neutral-950 border-neutral-800 text-cyan-400 hover:border-cyan-500/50'
-                    }`}
-                  >
-                    📷 Cam (192.168.0.167)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      tacticalAudio.playRadarPing(860);
-                      if (isDeviceCamActive) stopDeviceCamera();
-                      setCustomVideoId(HIKVISION_NVR_LAN_IP);
-                      setStreamMode('video');
-                    }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono border cursor-pointer transition-colors ${
-                      customVideoId === HIKVISION_NVR_LAN_IP
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 font-bold'
-                        : 'bg-neutral-950 border-neutral-800 text-cyan-400 hover:border-cyan-500/50'
-                    }`}
-                  >
-                    🖥️ Hikvision NVR (192.168.0.188)
-                  </button>
-                </div>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Paste YouTube livestream URL (watch / live / studio), 11-char ID, or IP..."
+                  placeholder="Paste YouTube livestream URL (watch / live) or 11-char ID..."
                   value={customVideoId}
                   onChange={(e) => {
                     const raw = e.target.value;
@@ -671,18 +635,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   </button>
                 )}
               </div>
-
-              {isRtmpStreamKeyOrUrl(customVideoId) && (
-                <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/50 text-[11px] text-amber-200 space-y-1 font-sans">
-                  <div className="font-bold font-mono-tactical text-amber-300 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>RTMP Encoder Key Detected ({customVideoId})</span>
-                  </div>
-                  <p className="text-neutral-300 leading-relaxed">
-                    That key is your <strong>private YouTube encoder key</strong> used on your Linux relay box to push RTSP video from <code>192.168.0.167</code> / <code>192.168.0.188</code> to <code>rtmp://a.rtmp.youtube.com/live2</code>. Once your Linux stream is running, paste your <strong>public YouTube Share Link</strong> (e.g. <code>https://youtube.com/live/...</code>) here!
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Field 2: YouTube Channel Link */}
@@ -845,71 +797,29 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               )}
             </div>
           ) : isLocalIpAddress(activeVideoId) || isRtmpStreamKeyOrUrl(activeVideoId) ? (
-            /* CASE B: Local Home Network IP Camera (Static IP) or RTMP Relay Setup */
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200 space-y-3 overflow-y-auto">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10 shrink-0">
-                <Wifi className="w-6 h-6 animate-pulse" />
+            /* CASE B: Non-public URL entered */
+            <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                <Video className="w-6 h-6" />
               </div>
-
-              <div className="space-y-1 max-w-lg">
-                <div className="flex items-center justify-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                  <span className="text-[10px] font-mono-tactical font-bold text-cyan-300 uppercase tracking-wider">
-                    HIKVISION DS-7608NXI-I2/8P/S • LAN &amp; LINUX RTMP RELAY
-                  </span>
-                </div>
-                <h3 className="font-display-tactical text-base sm:text-lg font-bold text-neutral-100 font-mono">
-                  {isLocalIpAddress(activeVideoId) ? formatLocalIpUrl(activeVideoId) : 'Linux FFmpeg → YouTube Live Relay'}
+              <div className="space-y-1 max-w-md">
+                <h3 className="font-display-tactical text-base font-bold text-neutral-100">
+                  Public YouTube Live Link Required
                 </h3>
-                <p className="text-xs text-neutral-300 leading-relaxed font-sans">
-                  Access your local camera or Hikvision 4K NVR directly on your LAN, or bridge the RTSP stream via Linux FFmpeg to YouTube Live for public broadcast on <strong>raptorlens.org</strong>:
+                <p className="text-xs text-neutral-400 leading-relaxed font-sans">
+                  Please use a public YouTube Live broadcast URL or select one of the verified live raptor cameras above.
                 </p>
               </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                <a
-                  href={HIKVISION_CAMERA_LAN_IP}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-display-tactical text-xs font-bold tracking-wider flex items-center gap-1.5 transition-all shadow-lg shadow-cyan-500/20 cursor-pointer"
-                >
-                  <span>Open Camera (192.168.0.167)</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-
-                <a
-                  href={HIKVISION_NVR_LAN_IP}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold tracking-wider flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-                >
-                  <span>Open Hikvision NVR (192.168.0.188)</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-
-                <button
-                  onClick={() => {
-                    tacticalAudio.playRadarPing(800);
-                    setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
-                    setStreamMode('video');
-                  }}
-                  className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-750 text-neutral-300 hover:text-amber-300 text-xs font-mono-tactical transition-colors cursor-pointer"
-                >
-                  Return to Public Raptor Cam
-                </button>
-              </div>
-
-              <div className="p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 text-[11px] text-neutral-300 max-w-xl text-left space-y-1.5 font-sans">
-                <strong className="text-amber-300 block font-mono-tactical text-[10px]">
-                  LINUX FFMPEG BRIDGE COMMAND (HIKVISION RTSP → YOUTUBE LIVE):
-                </strong>
-                <pre className="p-2 rounded-lg bg-neutral-950 border border-neutral-800 text-[10px] font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap">
-{`ffmpeg -f lavfi -i anullsrc -rtsp_transport tcp \\
-  -i "rtsp://admin:YOUR_PASSWORD@192.168.0.188:554/Streaming/Channels/101" \\
-  -c:v copy -c:a aac -b:a 128k -shortest \\
-  -f flv "rtmp://a.rtmp.youtube.com/live2/YOUR_STREAM_KEY"`}
-                </pre>
-              </div>
+              <button
+                onClick={() => {
+                  tacticalAudio.playRadarPing(800);
+                  setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                  setStreamMode('video');
+                }}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs font-mono-tactical transition-colors cursor-pointer"
+              >
+                Return to Station Cam
+              </button>
             </div>
           ) : (
             /* CASE C: Standard Embed Player */
