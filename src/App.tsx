@@ -1136,6 +1136,8 @@ export default function App() {
               activeSectorId={activeSectorId}
               currentCallsign={currentCallsign}
               onAddDispatch={handleAddDispatch}
+              sightings={sightings}
+              onSaveSighting={handleSaveSighting}
             />
           )}
 

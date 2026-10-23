@@ -29,6 +29,8 @@ export interface BarburySummitWeather {
   soaringLiftRating: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'LOW';
   walkerAdvisory: string;
   lastUpdated: string;
+  sunsetTime?: string;
+  goldenHourTime?: string;
 }
 
 export interface EducationalChallenge {

@@ -34,9 +34,10 @@ import {
   Target,
   Download
 } from 'lucide-react';
-import { LivestreamCam, RssDispatch } from '../types/raptor';
+import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
-import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER } from '../data/camPresets';
+import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER, BarburySummitWeather } from '../data/camPresets';
+import { fetchLiveBarburyWeather } from '../services/weatherService';
 import { tacticalAudio } from '../utils/audio';
 import { SectorId } from '../types/sector';
 import { 
@@ -64,6 +65,8 @@ interface SummitTrailConditionsViewProps {
   activeSectorId?: SectorId;
   currentCallsign?: string;
   onAddDispatch?: (dispatch: RssDispatch) => void;
+  sightings?: SightingLog[];
+  onSaveSighting?: (sighting: SightingLog) => void;
 }
 
 export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps> = ({
@@ -73,6 +76,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   activeSectorId = 'ridgeway-wessex',
   currentCallsign = 'RIDGE-WALKER',
   onAddDispatch,
+  sightings = [],
+  onSaveSighting,
 }) => {
   const currentCam = LIVESTREAM_CHANNELS[0];
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
@@ -104,11 +109,15 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [showFeedInput, setShowFeedInput] = useState<boolean>(false);
   const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);
   const [activePresetIndex, setActivePresetIndex] = useState<number>(0);
+  const [isAutoCyclingTour, setIsAutoCyclingTour] = useState<boolean>(true);
+  const [weather, setWeather] = useState<BarburySummitWeather>(BARBURY_SUMMIT_WEATHER);
+  const [isWeatherLive, setIsWeatherLive] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches'>('parking');
   const [activeTrailDistance, setActiveTrailDistance] = useState<'hackpen' | 'avebury' | 'liddington' | 'fyfield'>('hackpen');
   const [showQuickSpotModal, setShowQuickSpotModal] = useState<boolean>(false);
   const [quickSpotSpecies, setQuickSpotSpecies] = useState<string>('Red Kite');
   const [quickSpotCount, setQuickSpotCount] = useState<number>(1);
+  const [quickSpotZone, setQuickSpotZone] = useState<string>('Hackpen Hill View');
   const [quickSpotNotes, setQuickSpotNotes] = useState<string>('');
 
   // Device Camera (Webcam / Smartphone Camera) State
@@ -248,6 +257,35 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     } catch {}
   }, [streamMode]);
 
+  // Live Open-Meteo Barbury / Hackpen Weather & Sunset Sync
+  useEffect(() => {
+    let isMounted = true;
+    const syncWeather = async () => {
+      try {
+        const liveData = await fetchLiveBarburyWeather();
+        if (isMounted && liveData) {
+          setWeather(liveData);
+          setIsWeatherLive(true);
+        }
+      } catch {}
+    };
+    syncWeather();
+    const interval = setInterval(syncWeather, 5 * 60 * 1000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Auto-Rotating Highlight on the 4 Rolling Camera Views
+  useEffect(() => {
+    if (!isAutoCyclingTour) return;
+    const tourTimer = setInterval(() => {
+      setActivePresetIndex((prev) => (prev + 1) % BARBURY_PTZ_PRESETS.length);
+    }, 15000);
+    return () => clearInterval(tourTimer);
+  }, [isAutoCyclingTour]);
+
   const activeVideoId = customVideoId.trim() || currentCam.youtubeId || DEFAULT_CAMERA_VIDEO_ID;
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentCam.channelUrl || '');
   const resolvedChannelUrl = getYouTubeChannelUrl(customChannelInput || currentCam.channelUrl, activeVideoId);
@@ -308,24 +346,82 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     e.preventDefault();
     tacticalAudio.playConfirmChime();
 
+    const now = new Date();
+    const speciesIdMap: Record<string, string> = {
+      'Red Kite': 'red-kite',
+      'Common Buzzard': 'common-buzzard',
+      'Common Kestrel': 'kestrel',
+      'Peregrine Falcon': 'peregrine-falcon',
+      'Hen Harrier': 'hen-harrier',
+      'Barn Owl': 'barn-owl',
+      'Raven': 'common-buzzard',
+    };
+
+    const resolvedLocation = `Barbury Cam (${quickSpotZone})`;
+    const resolvedSummary =
+      quickSpotNotes.trim() ||
+      `Spotted ${quickSpotCount}x ${quickSpotSpecies} on ${quickSpotZone} along the Barbury Ridgeway scarp.`;
+
+    if (onSaveSighting) {
+      const newSighting: SightingLog = {
+        id: `log-cam-${Date.now()}`,
+        timestamp: now.toISOString(),
+        date: now.toISOString().split('T')[0],
+        time: now.toTimeString().slice(0, 5),
+        speciesId: speciesIdMap[quickSpotSpecies] || 'red-kite',
+        speciesName: quickSpotSpecies,
+        locationName: resolvedLocation,
+        sectorId: (activeSectorId || 'ridgeway-wessex') as SectorId,
+        coordinates: [51.4835, -1.7895],
+        count: quickSpotCount,
+        behavior:
+          quickSpotZone === 'Perch View'
+            ? 'Perched on Post/Sarsen'
+            : quickSpotSpecies === 'Common Kestrel'
+            ? 'Hover Hunting'
+            : 'Escarpment Lift',
+        altitudeM: quickSpotZone === 'Perch View' ? 5 : 45,
+        opticalGear: 'Station Cam / Trail Spotter',
+        observerCallsign: currentCallsign,
+        observerRank: 'Verified Spotter',
+        notes: resolvedSummary,
+        confidence: 'High (80%)',
+        windDirection: weather.windDirection,
+        windSpeedMph: Math.round(weather.windSpeedKt * 1.15),
+        thermalStrength: weather.soaringLiftRating === 'EXCELLENT' ? 'Strong' : 'Moderate',
+        verificationStatus: 'Corroborated by Peers',
+        corroborations: [],
+        auditTrail: [
+          {
+            timestamp: now.toISOString(),
+            action: 'INITIAL_LOG',
+            actorCallsign: currentCallsign,
+            details: `Logged via Station Camera & Trail Watch (${quickSpotZone})`,
+          },
+        ],
+      };
+      onSaveSighting(newSighting);
+    }
+
     if (onAddDispatch) {
       const autoDispatch: RssDispatch = {
         id: `disp-trail-${Date.now()}`,
-        title: `TRAIL SPOT: ${quickSpotCount}x ${quickSpotSpecies.toUpperCase()} AT BARBURY CASTLE`,
-        timestamp: new Date().toISOString(),
+        title: `CAM/TRAIL SPOT: ${quickSpotCount}x ${quickSpotSpecies.toUpperCase()} (${quickSpotZone.toUpperCase()})`,
+        timestamp: now.toISOString(),
         timeAgo: 'Just now',
         source: 'Barbury Ridge Trail Watch',
         category: 'SIGHTING ALERT',
         priority: 'HIGH',
-        summary: quickSpotNotes.trim() || `Hiker spotted ${quickSpotCount}x ${quickSpotSpecies} overhead on the Ridgeway trail.`,
+        summary: resolvedSummary,
         hotspotRef: 'barbury-castle',
-        author: `Trail Walker: ${currentCallsign}`,
+        author: `Spotter: ${currentCallsign}`,
         verified: true,
         speciesMentioned: [quickSpotSpecies],
       };
       onAddDispatch(autoDispatch);
     }
 
+    setActiveTab('dispatches');
     setShowQuickSpotModal(false);
     setQuickSpotNotes('');
   };
@@ -863,14 +959,27 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
           <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-2.5 text-xs font-mono-tactical">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Navigation className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-neutral-200 font-bold text-[11px]">
                   Station Cam Rolling Tour (4 Automated Focus Zones):
                 </span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold">
-                  AUTO-CYCLING
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(780);
+                    setIsAutoCyclingTour(!isAutoCyclingTour);
+                  }}
+                  className={`px-2 py-0.5 rounded border text-[9px] font-bold cursor-pointer transition-colors flex items-center gap-1 ${
+                    isAutoCyclingTour
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                  }`}
+                  title="Toggle automatic highlight rotation across the 4 rolling camera views"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isAutoCyclingTour ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'}`}></span>
+                  <span>{isAutoCyclingTour ? 'AUTO-CYCLING ON' : 'AUTO-CYCLE PAUSED'}</span>
+                </button>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {BARBURY_PTZ_PRESETS.map((preset, idx) => (
@@ -880,6 +989,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     onClick={() => {
                       tacticalAudio.playRadarPing(800 + idx * 50);
                       setActivePresetIndex(idx);
+                      setQuickSpotZone(preset.name.replace(/^\d+\.\s*/, ''));
                     }}
                     className={`px-2.5 py-1 rounded-lg text-[11px] cursor-pointer transition-colors flex items-center gap-1 ${
                       activePresetIndex === idx
@@ -984,19 +1094,24 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         </div>
       </div>
 
-      {/* 2. The 3-Second Glanceable Summary Bar (Simple & Punchy) */}
+      {/* 2. The 3-Second Glanceable Summary Bar (Live Open-Meteo Telemetry) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono-tactical text-xs">
         {/* Pill 1: Ridge Wind */}
         <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
           <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span>SUMMIT WIND</span>
+            <span className="flex items-center gap-1">
+              <span>SUMMIT WIND</span>
+              {isWeatherLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Live Open-Meteo Telemetry"></span>}
+            </span>
             <Wind className="w-3.5 h-3.5 text-amber-400" />
           </div>
           <div className="mt-1">
             <div className="text-base sm:text-lg font-bold text-neutral-100">
-              NW 14 <span className="text-xs font-normal text-neutral-400">kts</span>
+              {weather.windDirection} {weather.windSpeedKt} <span className="text-xs font-normal text-neutral-400">kts</span>
             </div>
-            <div className="text-[10px] text-amber-300">Gusts to 22 kts (Brisk)</div>
+            <div className="text-[10px] text-amber-300">
+              Gusts to {weather.windGustKt} kts • Lift: {weather.soaringLiftRating}
+            </div>
           </div>
         </div>
 
@@ -1008,9 +1123,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           </div>
           <div className="mt-1">
             <div className="text-base sm:text-lg font-bold text-emerald-400">
-              Clear (35+ km)
+              {weather.visibilityKm >= 25 ? `Clear (${weather.visibilityKm} km)` : `${weather.visibilityKm} km View`}
             </div>
-            <div className="text-[10px] text-neutral-300">Zero Summit Fog</div>
+            <div className="text-[10px] text-neutral-300 truncate" title={weather.cloudCover}>
+              {weather.cloudCover}
+            </div>
           </div>
         </div>
 
@@ -1022,23 +1139,27 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           </div>
           <div className="mt-1">
             <div className="text-base sm:text-lg font-bold text-neutral-100">
-              15.2°<span className="text-xs font-normal text-neutral-400">C</span>
+              {weather.temperatureC}°<span className="text-xs font-normal text-neutral-400">C</span>
             </div>
-            <div className="text-[10px] text-cyan-300">Feels like 12.8°C at 268m</div>
+            <div className="text-[10px] text-cyan-300">
+              Feels like {weather.windChillC}°C at 262m
+            </div>
           </div>
         </div>
 
         {/* Pill 4: Footing & Trailhead */}
         <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
           <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span>TRAIL FOOTING</span>
+            <span>TRAIL &amp; SUNSET</span>
             <Mountain className="w-3.5 h-3.5 text-amber-400" />
           </div>
           <div className="mt-1">
             <div className="text-base sm:text-lg font-bold text-neutral-100">
               Dry &amp; Firm <span className="text-emerald-400 text-xs font-normal">(9/10)</span>
             </div>
-            <div className="text-[10px] text-emerald-400 font-semibold">Free Parking • Dawn-Dusk</div>
+            <div className="text-[10px] text-emerald-400 font-semibold">
+              Sunset {weather.sunsetTime || '19:52'} • Golden Hr {weather.goldenHourTime || '18:55'}
+            </div>
           </div>
         </div>
       </div>
@@ -1118,10 +1239,12 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 </div>
               </div>
 
-              <div className="bg-neutral-900/40 p-3 rounded-xl border border-neutral-850 flex items-center justify-between text-[11px]">
+              <div className="bg-neutral-900/40 p-3 rounded-xl border border-neutral-850 flex items-center justify-between flex-wrap gap-2 text-[11px]">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>Sunset today: <strong className="text-neutral-100">18:48 BST</strong> (Golden hour starts 17:45)</span>
+                  <span>
+                    Sunset today: <strong className="text-neutral-100">{weather.sunsetTime || '19:52'} UK</strong> (Golden hour starts {weather.goldenHourTime || '18:55'}) • <span className="text-emerald-400">{weather.walkerAdvisory}</span>
+                  </span>
                 </div>
                 <button
                   onClick={() => onOpenLogModal('Barbury Castle')}
@@ -1174,11 +1297,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </div>
           )}
 
-          {/* TAB 3: Recent Spotter Reports */}
+          {/* TAB 3: Live Firestore Community Spotter Reports */}
           {activeTab === 'dispatches' && (
             <div className="space-y-3 font-mono-tactical text-xs">
-              <div className="flex items-center justify-between border-b border-neutral-850 pb-2">
-                <span className="text-neutral-400">COMMUNITY TRAIL SIGHTINGS</span>
+              <div className="flex items-center justify-between border-b border-neutral-850 pb-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-neutral-300 font-bold">LIVE COMMUNITY CAMERA &amp; TRAIL SIGHTINGS</span>
+                </div>
                 <button
                   onClick={() => setShowQuickSpotModal(true)}
                   className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
@@ -1188,33 +1314,47 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
 
               <div className="space-y-2">
-                {[
-                  {
-                    species: 'Red Kite',
-                    count: 4,
-                    loc: 'Northern Ramparts',
-                    time: '18 mins ago',
-                    notes: 'Kettling in strong slope updraft over ditch.',
-                    scout: 'DOWNS-ALPHA',
-                  },
-                  {
-                    species: 'Common Kestrel',
-                    count: 1,
-                    loc: 'Hackpen Scarp Gallops',
-                    time: '42 mins ago',
-                    notes: 'Head-to-wind hovering at 15m surveying turf for voles.',
-                    scout: 'RIDGEWAY-SCOUT',
-                  },
-                  {
-                    species: 'Common Buzzard',
-                    count: 2,
-                    loc: 'Sarsen Perch Post',
-                    time: '1 hr ago',
-                    notes: 'Perched together on fence line drying feathers in breeze.',
-                    scout: 'CHALK-WATCH',
-                  },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
+                {(sightings.length > 0
+                  ? sightings.slice(0, 6).map((s) => ({
+                      id: s.id,
+                      species: s.speciesName,
+                      count: s.count,
+                      loc: s.locationName,
+                      time: `${s.date} ${s.time}`,
+                      notes: s.notes,
+                      scout: s.observerCallsign,
+                    }))
+                  : [
+                      {
+                        id: 'fallback-1',
+                        species: 'Red Kite',
+                        count: 4,
+                        loc: 'Barbury Fort View (Ramparts)',
+                        time: '18 mins ago',
+                        notes: 'Kettling in strong slope updraft over Iron Age ditch.',
+                        scout: 'DOWNS-ALPHA',
+                      },
+                      {
+                        id: 'fallback-2',
+                        species: 'Common Kestrel',
+                        count: 1,
+                        loc: 'Hackpen Hill View',
+                        time: '42 mins ago',
+                        notes: 'Head-to-wind hovering at 15m surveying chalk turf for voles.',
+                        scout: 'RIDGEWAY-SCOUT',
+                      },
+                      {
+                        id: 'fallback-3',
+                        species: 'Common Buzzard',
+                        count: 2,
+                        loc: 'Perch View (Sarsen Post)',
+                        time: '1 hr ago',
+                        notes: 'Perched together on fence line drying feathers in breeze.',
+                        scout: 'CHALK-WATCH',
+                      },
+                    ]
+                ).map((item) => (
+                  <div key={item.id} className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
                     <div>
                       <div className="text-neutral-100 font-bold">
                         {item.count}x {item.species} <span className="text-[10px] text-amber-400 font-normal">({item.loc})</span>
@@ -1268,16 +1408,33 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 </select>
               </div>
 
-              <div>
-                <label className="text-neutral-400 block mb-1">INDIVIDUAL COUNT</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={quickSpotCount}
-                  onChange={(e) => setQuickSpotCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-neutral-100 focus:outline-none focus:border-amber-500"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-neutral-400 block mb-1">CAMERA VIEW / ZONE</label>
+                  <select
+                    value={quickSpotZone}
+                    onChange={(e) => setQuickSpotZone(e.target.value)}
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-neutral-100 font-sans text-xs focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Hackpen Hill View">Hackpen Hill View</option>
+                    <option value="Barbury Fort View">Barbury Fort View</option>
+                    <option value="Field View">Field View</option>
+                    <option value="Perch View">Perch View</option>
+                    <option value="Ridgeway Trail">Ridgeway Trail (On Foot)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-neutral-400 block mb-1">INDIVIDUAL COUNT</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={quickSpotCount}
+                    onChange={(e) => setQuickSpotCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-neutral-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
               </div>
 
               <div>

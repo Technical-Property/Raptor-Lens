@@ -28,7 +28,7 @@ export function getWmoWeatherDescription(code: number): string {
 export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
   const lat = 51.4851;
   const lng = -1.7892;
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&wind_speed_unit=kn&timezone=Europe%2FLondon`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FLondon`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -97,6 +97,22 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
     walkerAdvisory = `Favourable downland conditions. Chalk tracks firm underfoot with ${windSpeed} kt ${windDirCard} breeze. Good visibility across the Marlborough Downs.`;
   }
 
+  // Parse daily sunset and calculate golden hour (1 hr before sunset)
+  let sunsetTime = '18:05';
+  let goldenHourTime = '17:05';
+  const rawSunset = data?.daily?.sunset?.[0];
+  if (typeof rawSunset === 'string' && rawSunset.includes('T')) {
+    const timePart = rawSunset.split('T')[1];
+    if (timePart && timePart.length >= 5) {
+      sunsetTime = timePart.slice(0, 5);
+      const [hh, mm] = sunsetTime.split(':').map(Number);
+      if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
+        const ghHour = Math.max(0, hh - 1);
+        goldenHourTime = `${String(ghHour).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      }
+    }
+  }
+
   // Format timestamp in London time
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
@@ -115,6 +131,8 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
     pressureTendency: pressure >= 1018 ? 'Rising' : pressure <= 1005 ? 'Falling' : 'Steady',
     soaringLiftRating,
     walkerAdvisory,
-    lastUpdated: `${timeStr} BST • Live Station Sync (Open-Meteo)`,
+    lastUpdated: `${timeStr} UK • Live Met Sync (Open-Meteo)`,
+    sunsetTime,
+    goldenHourTime,
   };
 }
