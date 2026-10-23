@@ -311,7 +311,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               <Mail className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
               <div>
                 <span className="text-neutral-400 block font-semibold">Direct Email Inquiries:</span>
-                <span className="text-neutral-200">operations@raptorlens.org.uk</span>
+                <span className="text-neutral-200">operations@raptorlens.org</span>
               </div>
             </div>
 

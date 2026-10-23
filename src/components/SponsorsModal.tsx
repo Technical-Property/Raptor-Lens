@@ -416,7 +416,7 @@ export const SponsorsModal: React.FC<SponsorsModalProps> = ({
                 </h3>
               </div>
               <span className="text-[11px] font-mono text-neutral-500">
-                partnerships@raptorlens.org.uk
+                partnerships@raptorlens.org
               </span>
             </div>
 

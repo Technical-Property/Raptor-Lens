@@ -5,17 +5,22 @@
  */
 
 // Verified 24/7 active live raptor & wildlife streams
-export const DEFAULT_CAMERA_VIDEO_ID = 'GAxREl6-fJs'; // Buckinghamshire UK Peregrine Falcon Live Cam
-export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon
-export const OSPREY_UK_VIDEO_ID = 'ZEWqlgElhN0';       // Loch of the Lowes UK Osprey Live Cam
-export const EAGLE_LIVE_VIDEO_ID = 'B4-L2nfGcuE';      // Big Bear Bald Eagle Live Nest
+export const DEFAULT_CAMERA_VIDEO_ID = 'wUmvCR2YBMQ'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
+export const RAPTORLENS_STATION_VIDEO_ID = 'wUmvCR2YBMQ'; // Official RaptorLens UK Live Cam
+export const UK_OWL_KESTREL_VIDEO_ID = 'q28Q9_qzqyg'; // Robert E Fuller UK Barn Owl, Kestrel & Tawny Owl Live Cam
+export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon Cam 1
+export const OSPREY_UK_VIDEO_ID = 'V08ET209nvU';       // Rutland Osprey Project (Manton Bay, UK) Live Cam
+export const EAGLE_LIVE_VIDEO_ID = 'B4-L2nfGcuE';      // Big Bear Bald Eagle Live Nest (Cam 1)
+export const EAGLE_WIDE_VIDEO_ID = '41eq4VzCYc4';      // Big Bear Bald Eagle Wide Lookout (Cam 2)
 export const CORNELL_FEEDER_VIDEO_ID = 'x10vL6_47Dw';  // Cornell Lab Live FeederWatch
-export const DEMO_NATURE_VIDEO_ID = '4kRzwJXaeIM';     // Verified 4K 60fps Bird & Wildlife Live Cam
+export const DEMO_NATURE_VIDEO_ID = 'B4-L2nfGcuE';     // Fallback verified stream
 export const DEMO_LIVE_VIDEO_ID = '21X5lGlDOfg';       // NASA Earth Live HD broadcast
 
 export interface CameraPresetOption {
   id: string;
   name: string;
+  shortLabel: string;
+  badge: string;
   videoId: string;
   channelName: string;
   channelUrl: string;
@@ -26,54 +31,76 @@ export interface CameraPresetOption {
 
 export const POPULAR_CAMERA_PRESETS: CameraPresetOption[] = [
   {
+    id: 'raptorlens-station',
+    name: 'RaptorLens Station Cam (Rolling 4-View Tour)',
+    shortLabel: '📡 Station Cam (Rolling)',
+    badge: 'PRIMARY STATION',
+    videoId: RAPTORLENS_STATION_VIDEO_ID,
+    channelName: 'RaptorLens UK Official Broadcast',
+    channelUrl: 'https://youtube.com/live/wUmvCR2YBMQ',
+    species: 'Red Kite, Buzzard, Kestrel & Ridge Weather',
+    location: 'Hackpen Hill • Barbury Fort • Field • Perch',
+    description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View.',
+  },
+  {
+    id: 'uk-owl-kestrel',
+    name: 'UK Barn Owl, Kestrel & Tawny Owl Cam',
+    shortLabel: '🦉 UK Owl & Kestrel',
+    badge: 'UK GUEST CAM',
+    videoId: UK_OWL_KESTREL_VIDEO_ID,
+    channelName: 'Robert E Fuller Wildlife',
+    channelUrl: 'https://www.youtube.com/watch?v=q28Q9_qzqyg',
+    species: 'Barn Owl, Common Kestrel & Tawny Owl',
+    location: 'Fotherdale, Yorkshire Wolds, UK',
+    description: 'Renowned 24/7 live UK wildlife cameras tracking resident Barn Owls, Kestrels, and Tawny Owls.',
+  },
+  {
     id: 'uk-peregrine',
-    name: 'UK Peregrine Falcon Live Cam (Cam 1)',
+    name: 'UK Peregrine Falcon Live Cam',
+    shortLabel: '🦅 UK Peregrine',
+    badge: 'UK GUEST CAM',
     videoId: PEREGRINE_UK_VIDEO_ID,
     channelName: 'Buckinghamshire Council Peregrines',
     channelUrl: 'https://www.youtube.com/watch?v=GAxREl6-fJs',
     species: 'Peregrine Falcon (Falco peregrinus)',
-    location: 'Buckinghamshire, UK',
-    description: 'Direct high-definition optical nest camera monitoring resident UK Peregrine Falcons hunting and roosting.',
+    location: 'Aylesbury, Buckinghamshire, UK',
+    description: 'High-definition optical Scrape & Ledge camera monitoring resident UK Peregrine Falcons.',
   },
   {
     id: 'uk-osprey',
-    name: 'UK Osprey Nest Live Cam',
+    name: 'UK Rutland Osprey Nest Live Cam',
+    shortLabel: '🐟 UK Osprey',
+    badge: 'UK GUEST CAM',
     videoId: OSPREY_UK_VIDEO_ID,
-    channelName: 'Scottish Wildlife Trust',
-    channelUrl: 'https://www.youtube.com/watch?v=ZEWqlgElhN0',
+    channelName: 'Rutland Osprey Project (LRWT)',
+    channelUrl: 'https://www.youtube.com/watch?v=V08ET209nvU',
     species: 'Western Osprey (Pandion haliaetus)',
-    location: 'Loch of the Lowes, Scotland, UK',
-    description: 'Renowned 24/7 telephoto wildlife camera trained on breeding tree-top Osprey aerie.',
+    location: 'Manton Bay, Rutland Water, UK',
+    description: 'Live conservation camera overlooking the Manton Bay Osprey nesting platform at Rutland Water Nature Reserve.',
   },
   {
     id: 'bald-eagle',
-    name: 'Big Bear Bald Eagle Nest Cam (30x Optical)',
+    name: 'Big Bear Bald Eagle Nest Cam (Cam 1)',
+    shortLabel: '🦅 Eagle Nest',
+    badge: 'INTL RAPTOR CAM',
     videoId: EAGLE_LIVE_VIDEO_ID,
     channelName: 'Friends of Big Bear Valley',
     channelUrl: 'https://www.youtube.com/watch?v=B4-L2nfGcuE',
     species: 'Bald Eagle (Haliaeetus leucocephalus)',
-    location: 'High Altitude Pine Canopy (2,050m ASL)',
-    description: 'World-famous 24/7 solar-powered telephoto PTZ camera observing hunting raptors and active clutch.',
+    location: 'San Bernardino National Forest (2,050m ASL)',
+    description: '24/7 solar-powered telephoto camera observing high-altitude Bald Eagle aerie.',
   },
   {
-    id: 'cornell-feeder',
-    name: 'Cornell Lab Wild Bird Sanctuary Live Cam',
-    videoId: CORNELL_FEEDER_VIDEO_ID,
-    channelName: 'Cornell Lab of Ornithology',
-    channelUrl: 'https://www.youtube.com/watch?v=x10vL6_47Dw',
-    species: 'Mixed Raptors & Woodland Avifauna',
-    location: 'Sapsucker Woods Sanctuary',
-    description: 'High-definition optical bird cam with directional microphone for birds of prey and feeder visitors.',
-  },
-  {
-    id: 'demo-nature',
-    name: '4K Ultra-HD Nature & Wildlife Optical Stream',
-    videoId: DEMO_NATURE_VIDEO_ID,
-    channelName: 'Nature Wildlife Broadcast',
-    channelUrl: 'https://www.youtube.com/watch?v=4kRzwJXaeIM',
-    species: 'Downland & Woodland Wildlife',
-    location: 'Nature Reserve (4K 60fps)',
-    description: 'Ultra-clear 4K feed verifying video hardware acceleration and display fidelity.',
+    id: 'bald-eagle-wide',
+    name: 'Big Bear Eagle Lookout & Canopy (Cam 2)',
+    shortLabel: '🌲 Eagle Lookout',
+    badge: 'INTL RAPTOR CAM',
+    videoId: EAGLE_WIDE_VIDEO_ID,
+    channelName: 'Friends of Big Bear Valley',
+    channelUrl: 'https://www.youtube.com/watch?v=41eq4VzCYc4',
+    species: 'Bald Eagle & Red-tailed Hawk',
+    location: 'Big Bear Lake Pine Canopy',
+    description: 'Wide-angle ridge and snag perch camera tracking eagles gliding in and out of the valley.',
   },
 ];
 
@@ -196,6 +223,17 @@ export function getYouTubeChannelUrl(channelInput?: string, videoId: string = DE
   }
   return `https://www.youtube.com/watch?v=${videoId || DEFAULT_CAMERA_VIDEO_ID}`;
 }
+
+export const HIKVISION_CAMERA_LAN_IP = 'http://192.168.0.167';
+export const HIKVISION_NVR_LAN_IP = 'http://192.168.0.188';
+
+export const isRtmpStreamKeyOrUrl = (val: string): boolean => {
+  if (!val) return false;
+  const trimmed = val.trim();
+  if (/^rtmps?:\/\//i.test(trimmed)) return true;
+  if (/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/i.test(trimmed)) return true;
+  return false;
+};
 
 export const isLocalIpAddress = (val: string): boolean => {
   if (!val) return false;

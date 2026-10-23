@@ -9,21 +9,21 @@ import { LivestreamCam } from '../types/raptor';
 export const LIVESTREAM_CHANNELS: LivestreamCam[] = [
   {
     id: 'stream-barbury-castle-livecam',
-    title: 'UK Peregrine & Downland Raptor Cam (30x Optical)',
+    title: 'RaptorLens UK Downland & Summit Live Cam (4K Optical)',
     location: 'Wessex Escarpment / Downland Roost (Facing Barbury Airspace)',
-    channelName: 'UK Raptor Watch & Peregrine Cam',
-    youtubeId: 'GAxREl6-fJs', // Active verified live stream
-    channelUrl: 'https://www.youtube.com/watch?v=GAxREl6-fJs',
+    channelName: 'RaptorLens UK Live Station',
+    youtubeId: 'wUmvCR2YBMQ', // Official RaptorLens UK Live Stream
+    channelUrl: 'https://youtube.com/live/wUmvCR2YBMQ',
     status: 'LIVE',
-    description: 'Direct high-definition optical telephoto camera tracking resident UK raptors, Peregrine Falcons, hunting Buzzards, and low-quartering Harriers along the downland ridge.',
-    elevation: '268m ASL (Target Hillfort)',
+    description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View to track downland raptors and live ridge weather.',
+    elevation: '268m ASL (Barbury & Hackpen Sector)',
     gridRef: 'SU 149 763 (Target)',
     viewers: 412,
     isCommunityFieldCam: true,
     distanceToSubjectKm: 3.0,
-    opticalZoom: '30x Optical Telephoto',
-    panBearing: '195° SSW towards Hillfort Ramparts',
-    sensorSpecs: 'High-sensitivity 30x Optical Zoom • Solar Powered Field Rig',
+    opticalZoom: '30x Rolling PTZ Tour',
+    panBearing: 'Hackpen Hill • Barbury Fort • Field • Perch',
+    sensorSpecs: '4K Hikvision AcuSense • 4-Zone Rolling Guard Tour',
     spotterReports: [
       {
         id: 'spot-01',
