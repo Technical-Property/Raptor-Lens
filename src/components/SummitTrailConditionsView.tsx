@@ -32,11 +32,16 @@ import {
   Wifi,
   Info,
   Target,
-  Download
+  Download,
+  Coffee,
+  Share2,
+  Check,
+  Binoculars
 } from 'lucide-react';
 import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
 import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER, BarburySummitWeather } from '../data/camPresets';
+import { RECOMMENDED_FIELD_KIT, buildAmazonUkAffiliateUrl } from '../data/affiliateKit';
 import { fetchLiveBarburyWeather } from '../services/weatherService';
 import { tacticalAudio } from '../utils/audio';
 import { SectorId } from '../types/sector';
@@ -60,6 +65,7 @@ interface SummitTrailConditionsViewProps {
   onSwitchToRadar: () => void;
   onOpenLogModal: (locationGuess?: string) => void;
   onOpenGuide: () => void;
+  onOpenDonate?: () => void;
   activeSectorId?: SectorId;
   currentCallsign?: string;
   onAddDispatch?: (dispatch: RssDispatch) => void;
@@ -71,6 +77,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   onSwitchToRadar,
   onOpenLogModal,
   onOpenGuide,
+  onOpenDonate,
   activeSectorId = 'ridgeway-wessex',
   currentCallsign = 'RIDGE-WALKER',
   onAddDispatch,
@@ -110,7 +117,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [isAutoCyclingTour, setIsAutoCyclingTour] = useState<boolean>(true);
   const [weather, setWeather] = useState<BarburySummitWeather>(BARBURY_SUMMIT_WEATHER);
   const [isWeatherLive, setIsWeatherLive] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches'>('parking');
+  const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches' | 'kit'>('parking');
+  const [copiedShareLink, setCopiedShareLink] = useState<boolean>(false);
   const [activeTrailDistance, setActiveTrailDistance] = useState<'hackpen' | 'avebury' | 'liddington' | 'fyfield'>('hackpen');
   const [showQuickSpotModal, setShowQuickSpotModal] = useState<boolean>(false);
   const [quickSpotSpecies, setQuickSpotSpecies] = useState<string>('Red Kite');
@@ -988,7 +996,57 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {onOpenDonate && (
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playConfirmChime();
+                  onOpenDonate();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                title="Support the 24/7 Barbury & Hackpen Hill live camera"
+              >
+                <Coffee className="w-3.5 h-3.5 text-amber-400" />
+                <span>Support Cam</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                const shareUrl = 'https://raptorlens.org';
+                const shareText = `Watch the live Hackpen Hill, Barbury Castle & Ridgeway Raptor Cam + live summit weather on ${shareUrl}`;
+                if (navigator.share) {
+                  navigator.share({
+                    title: 'RaptorLens UK — Live Hackpen Hill & Barbury Castle Cam',
+                    text: shareText,
+                    url: shareUrl,
+                  }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    setCopiedShareLink(true);
+                    setTimeout(() => setCopiedShareLink(false), 3000);
+                  }).catch(() => {});
+                }
+              }}
+              className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 hover:text-emerald-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+              title="Share live camera link with walkers & birders"
+            >
+              {copiedShareLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Link Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Share Cam</span>
+                </>
+              )}
+            </button>
+
             <a
               href={resolvedChannelUrl}
               target="_blank"
@@ -1077,7 +1135,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       {/* 3. Clean Progressive Detail Tabs (No Endless Scrolling) */}
       <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Tab Headers */}
-        <div className="flex items-center border-b border-neutral-850 bg-neutral-900/50 p-1.5 gap-1.5 font-mono-tactical text-xs">
+        <div className="flex items-center border-b border-neutral-850 bg-neutral-900/50 p-1.5 gap-1.5 font-mono-tactical text-xs flex-wrap">
           <button
             onClick={() => {
               tacticalAudio.playRadarPing(800);
@@ -1121,6 +1179,21 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Community Spotter Reports</span>
+          </button>
+
+          <button
+            onClick={() => {
+              tacticalAudio.playRadarPing(800);
+              setActiveTab('kit');
+            }}
+            className={`px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
+              activeTab === 'kit'
+                ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 font-bold'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <Binoculars className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Optics &amp; Trail Kit</span>
           </button>
         </div>
 
@@ -1280,8 +1353,115 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
             </div>
           )}
+
+          {/* TAB 4: Recommended Field Optics & Trail Kit (Affiliate Ready) */}
+          {activeTab === 'kit' && (
+            <div className="space-y-3.5 font-mono-tactical text-xs">
+              <div className="flex items-center justify-between border-b border-neutral-850 pb-2 flex-wrap gap-2">
+                <div>
+                  <span className="text-emerald-400 font-bold">RECOMMENDED RIDGEWAY OPTICS &amp; FIELD KIT</span>
+                  <p className="text-[11px] text-neutral-400 font-sans mt-0.5">
+                    Field-tested binoculars, OS maps, and identification guides for Barbury Castle, Hackpen Hill &amp; the Marlborough Downs.
+                  </p>
+                </div>
+                {onOpenDonate && (
+                  <button
+                    type="button"
+                    onClick={onOpenDonate}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Coffee className="w-3.5 h-3.5" />
+                    <span>Support Station Cam</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {RECOMMENDED_FIELD_KIT.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl bg-neutral-900/70 border border-neutral-800 hover:border-emerald-500/40 transition-colors flex flex-col justify-between gap-2.5"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[9px] font-bold">
+                          {item.badge}
+                        </span>
+                        <span className="text-amber-300 font-bold text-[11px]">{item.priceRange}</span>
+                      </div>
+                      <h4 className="font-bold text-neutral-100 text-xs sm:text-sm pt-0.5">{item.name}</h4>
+                      <div className="text-[10px] text-cyan-300">Best for: {item.bestFor}</div>
+                      <p className="text-[11px] text-neutral-400 font-sans leading-relaxed">{item.summary}</p>
+                    </div>
+                    <div className="pt-1 flex items-center justify-between border-t border-neutral-800/80">
+                      <span className="text-[10px] text-neutral-500">{item.category}</span>
+                      <a
+                        href={buildAmazonUkAffiliateUrl(item.amazonSearchQuery)}
+                        target="_blank"
+                        rel="noreferrer sponsored"
+                        onClick={() => tacticalAudio.playRadarPing(880)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>View on Amazon UK</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-[10px] text-neutral-500 font-sans text-center pt-1">
+                Qualifying purchases via recommended kit links help fund 24/7 live camera bandwidth and station maintenance at no extra cost to you.
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 4. SEO & Local Walker Guide: Barbury Castle, Hackpen Hill & The Ridgeway */}
+      <section
+        aria-label="Barbury Castle and Hackpen Hill Live Camera and Trail Guide"
+        className="bg-neutral-950/90 border border-neutral-850 rounded-2xl p-4 sm:p-5 space-y-3 text-xs font-mono-tactical"
+      >
+        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-neutral-850 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Compass className="w-4 h-4 text-amber-400" />
+            <h2 className="text-neutral-100 font-bold text-xs sm:text-sm uppercase tracking-wider">
+              Barbury Castle, Hackpen Hill &amp; Ridgeway Live Guide (Wiltshire, UK)
+            </h2>
+          </div>
+          <span className="text-[10px] text-neutral-400">North Wessex Downs National Landscape • 262m ASL</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-sans text-[11px] text-neutral-300 leading-relaxed">
+          <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800/90 space-y-1">
+            <h3 className="font-mono-tactical font-bold text-amber-300 text-xs">
+              What does the live camera show?
+            </h3>
+            <p className="text-neutral-400">
+              Our 24/7 rolling station camera broadcasts live across four views on the Marlborough Downs: <strong>Hackpen Hill &amp; White Horse</strong>, <strong>Barbury Castle Iron Age Hillfort</strong>, the chalk downland <strong>Field View</strong>, and the close-up <strong>Perch View</strong>.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800/90 space-y-1">
+            <h3 className="font-mono-tactical font-bold text-emerald-300 text-xs">
+              Which birds of prey can I spot here?
+            </h3>
+            <p className="text-neutral-400">
+              The north-facing chalk scarp generates strong updrafts for <strong>Red Kites</strong>, <strong>Common Buzzards</strong>, wind-hovering <strong>Common Kestrels</strong>, <strong>Peregrine Falcons</strong>, and wintering <strong>Hen Harriers</strong> and <strong>Short-eared Owls</strong>.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800/90 space-y-1">
+            <h3 className="font-mono-tactical font-bold text-cyan-300 text-xs">
+              Checking Ridgeway weather before you walk
+            </h3>
+            <p className="text-neutral-400">
+              Check the live video and summit telemetry above before driving to <strong>Barbury Castle Country Park (SN4 0QH)</strong> or <strong>Hackpen Hill</strong> to verify hill fog, wind chill, and sunset times along The Ridgeway National Trail.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Quick Spot on Trail Modal */}
       {showQuickSpotModal && (
