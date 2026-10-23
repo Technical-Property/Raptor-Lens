@@ -1411,7 +1411,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
 
               <div className="text-[10px] text-neutral-500 font-sans text-center pt-1">
-                Qualifying purchases via recommended kit links help fund 24/7 live camera bandwidth and station maintenance at no extra cost to you.
+                As an Amazon Associate I earn from qualifying purchases — helping fund 24/7 live camera bandwidth and station maintenance at no extra cost to you.
               </div>
             </div>
           )}
