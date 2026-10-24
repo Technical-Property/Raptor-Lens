@@ -113,8 +113,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [showFeedInput, setShowFeedInput] = useState<boolean>(false);
   const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);
-  const [activePresetIndex, setActivePresetIndex] = useState<number>(0);
-  const [isAutoCyclingTour, setIsAutoCyclingTour] = useState<boolean>(true);
   const [weather, setWeather] = useState<BarburySummitWeather>(BARBURY_SUMMIT_WEATHER);
   const [isWeatherLive, setIsWeatherLive] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches' | 'kit'>('parking');
@@ -283,15 +281,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     };
   }, []);
 
-  // Auto-Rotating Highlight on the 4 Rolling Camera Views
-  useEffect(() => {
-    if (!isAutoCyclingTour) return;
-    const tourTimer = setInterval(() => {
-      setActivePresetIndex((prev) => (prev + 1) % BARBURY_PTZ_PRESETS.length);
-    }, 15000);
-    return () => clearInterval(tourTimer);
-  }, [isAutoCyclingTour]);
-
   const activeVideoId = customVideoId.trim() || currentCam.youtubeId || DEFAULT_CAMERA_VIDEO_ID;
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentCam.channelUrl || '');
   const resolvedChannelUrl = getYouTubeChannelUrl(customChannelInput || currentCam.channelUrl, activeVideoId);
@@ -300,8 +289,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     channelId: channelInfo.channelId,
     mode: streamMode,
   });
-
-  const activePreset = BARBURY_PTZ_PRESETS[activePresetIndex] || BARBURY_PTZ_PRESETS[0];
 
   const trailDestinations = [
     {
@@ -840,13 +827,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 allowFullScreen
               />
 
-              {/* Clean Camera Preset Label */}
+              {/* Clean Camera Label */}
               <div className="absolute bottom-2 left-2 pointer-events-none bg-neutral-950/85 backdrop-blur-md border border-neutral-800 px-2.5 py-1 rounded-lg text-[10px] font-mono-tactical text-neutral-300 flex items-center gap-2 shadow-lg">
                 {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
                   <>
-                    <span className="text-emerald-400 font-bold">ROLLING PTZ TOUR</span>
-                    <span className="text-neutral-600">|</span>
-                    <span>Focus: <strong className="text-amber-300">{activePreset.shortName}</strong></span>
+                    <span className="text-emerald-400 font-bold">ROLLING STATION CAM</span>
+                    <span className="text-neutral-600 hidden sm:inline">|</span>
+                    <span className="text-neutral-300 hidden sm:inline">Hackpen Hill • Barbury Fort • Field • Perch</span>
                   </>
                 ) : (
                   <>
@@ -873,75 +860,38 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           )}
         </div>
 
-        {/* Station Cam Rolling 4-View Tour Guide (or Guest Camera Info Strip) */}
+        {/* Station Cam Rolling 4-View Reference Guide (Static, No Misleading Toggle Buttons) */}
         {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
-          <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-2.5 text-xs font-mono-tactical">
+          <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-2 text-xs font-mono-tactical">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <Navigation className="w-3.5 h-3.5 text-amber-400" />
                 <span className="text-neutral-200 font-bold text-[11px]">
-                  Station Cam Rolling Tour (4 Automated Focus Zones):
+                  Rolling Camera Sweep — 4 Areas Covered Automatically by This Stream:
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    tacticalAudio.playRadarPing(780);
-                    setIsAutoCyclingTour(!isAutoCyclingTour);
-                  }}
-                  className={`px-2 py-0.5 rounded border text-[9px] font-bold cursor-pointer transition-colors flex items-center gap-1 ${
-                    isAutoCyclingTour
-                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
-                      : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-neutral-200'
-                  }`}
-                  title="Toggle automatic highlight rotation across the 4 rolling camera views"
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isAutoCyclingTour ? 'bg-emerald-400 animate-pulse' : 'bg-neutral-500'}`}></span>
-                  <span>{isAutoCyclingTour ? 'AUTO-CYCLING ON' : 'AUTO-CYCLE PAUSED'}</span>
-                </button>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {BARBURY_PTZ_PRESETS.map((preset, idx) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => {
-                      tacticalAudio.playRadarPing(800 + idx * 50);
-                      setActivePresetIndex(idx);
-                      setQuickSpotZone(preset.name.replace(/^\d+\.\s*/, ''));
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] cursor-pointer transition-colors flex items-center gap-1 ${
-                      activePresetIndex === idx
-                        ? 'bg-amber-500 text-neutral-950 font-bold shadow-sm'
-                        : 'bg-neutral-950 border border-neutral-800 text-neutral-300 hover:text-amber-300 hover:border-amber-500/40'
-                    }`}
-                  >
-                    <span>{preset.icon}</span>
-                    <span>{preset.shortName}</span>
-                  </button>
-                ))}
-              </div>
+              <span className="text-[10px] text-neutral-400 font-sans">
+                Camera pans continuously across all 4 downland zones
+              </span>
             </div>
 
-            {/* Active Rolling Zone Details */}
-            <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-neutral-800/90 grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
-              <div className="md:col-span-2 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-amber-400 font-bold">{activePreset.icon} {activePreset.name}</span>
-                  <span className="text-neutral-500">•</span>
-                  <span className="text-cyan-300">{activePreset.zoom} ({activePreset.distanceKm}, {activePreset.azimuth})</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+              {BARBURY_PTZ_PRESETS.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="p-2.5 rounded-xl bg-neutral-950/90 border border-neutral-800/90 space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-amber-400 font-bold truncate">
+                      {preset.icon} {preset.name.replace(/^\d+\.\s*/, '')}
+                    </span>
+                    <span className="text-[9px] text-cyan-300 shrink-0">{preset.distanceKm}</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 font-sans leading-snug">
+                    {preset.target}
+                  </p>
                 </div>
-                <p className="text-neutral-300 font-sans leading-relaxed">
-                  {activePreset.description}
-                </p>
-              </div>
-              <div className="bg-neutral-900/80 border border-neutral-800 rounded-lg p-2 space-y-1 flex flex-col justify-center">
-                <div className="text-[10px] text-neutral-400">
-                  <strong className="text-amber-300">Target:</strong> {activePreset.target}
-                </div>
-                <div className="text-[10px] text-neutral-400">
-                  <strong className="text-emerald-300">Key Species:</strong> {activePreset.typicalSpecies.join(', ')}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         ) : (
