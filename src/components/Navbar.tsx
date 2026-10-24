@@ -279,32 +279,33 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Main Navbar */}
-      <div className="px-4 lg:px-6 py-3 flex items-center justify-between gap-4">
+      <div className="px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
         {/* Brand */}
         <div
           onClick={() => {
             tacticalAudio.playRadarPing(800);
-            onTabChange('map');
+            onTabChange('dispatches');
           }}
-          className="flex items-center gap-3 cursor-pointer group"
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer group min-w-0"
         >
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border-2 border-amber-500/60 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
-            <Crosshair className="w-5 h-5 animate-radar-pulse" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border-2 border-amber-500/60 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform shrink-0">
+            <Crosshair className="w-4 h-4 sm:w-5 sm:h-5 animate-radar-pulse" />
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-display-tactical text-lg md:text-xl font-bold tracking-wider text-neutral-100 uppercase">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="font-display-tactical text-base sm:text-lg md:text-xl font-bold tracking-wider text-neutral-100 uppercase truncate">
                 RaptorLens
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tactical font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <span className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono-tactical font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
                 UK
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono-tactical font-bold bg-amber-500/30 text-amber-300 border border-amber-500/60 tracking-wider shadow-sm">
+              <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] font-mono-tactical font-bold bg-amber-500/30 text-amber-300 border border-amber-500/60 tracking-wider shadow-sm shrink-0">
                 BETA
               </span>
             </div>
-            <div className="text-[10px] font-mono-tactical text-neutral-400 uppercase tracking-wider -mt-0.5 flex items-center gap-1.5">
-              <span className="text-amber-400/90 font-bold">Tactical Ridge, Weather &amp; Wildlife Radar</span>
+            <div className="text-[10px] font-mono-tactical text-neutral-400 uppercase tracking-wider -mt-0.5 flex items-center gap-1.5 truncate">
+              <span className="text-amber-400/90 font-bold hidden sm:inline">Tactical Ridge, Weather &amp; Wildlife Radar</span>
+              <span className="text-amber-400/90 font-bold sm:hidden">Live Ridge Cam &amp; Raptor Radar</span>
             </div>
           </div>
         </div>
@@ -345,7 +346,25 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Mobile Audio Mute Toggle */}
+          <button
+            id="mobile-mute-toggle-btn"
+            onClick={handleToggleMute}
+            className={`md:hidden min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl border text-xs font-mono-tactical transition-colors cursor-pointer ${
+              isMuted
+                ? 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+            }`}
+            title={isMuted ? 'Audio Muted (Tap to Unmute)' : 'Sound Active (Tap to Mute)'}
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4 text-neutral-500" />
+            ) : (
+              <Volume2 className="w-4 h-4 text-amber-400" />
+            )}
+          </button>
+
           {/* Field Lite Mode Switcher (Great for Mobile & Wind-swept Escarpments) */}
           {onToggleLiteMode && (
             <button
@@ -354,20 +373,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 tacticalAudio.playRadarPing(880);
                 onToggleLiteMode();
               }}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 md:py-2 rounded-xl text-xs font-mono-tactical font-bold transition-all border cursor-pointer ${
+              className={`min-h-[38px] flex items-center gap-1.5 px-2.5 py-1.5 md:py-2 rounded-xl text-xs font-mono-tactical font-bold transition-all border cursor-pointer ${
                 isLiteMode
                   ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-md shadow-cyan-500/20'
                   : 'bg-neutral-900/90 hover:bg-neutral-850 border-neutral-750 text-neutral-300 hover:text-cyan-300'
               }`}
-              title={isLiteMode ? 'Switch to Full Desktop Tactical Radar' : 'Switch to Field Scout Lite Mode (1-Tap GPS Logging & High-Contrast Touch View)'}
+              title={isLiteMode ? 'Switch to Full Live Camera & Tactical Radar' : 'Switch to Field Scout Lite Mode (1-Tap GPS Logging & High-Contrast Touch View)'}
             >
-              <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">{isLiteMode ? 'Full Mode' : 'Pocket Lite'}</span>
-              <span className="sm:hidden text-[10px]">{isLiteMode ? 'Full' : 'Lite'}</span>
+              <Smartphone className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="hidden sm:inline">{isLiteMode ? 'Full View' : 'Pocket Lite'}</span>
+              <span className="sm:hidden text-[11px]">{isLiteMode ? 'Full View' : 'Lite'}</span>
             </button>
           )}
 
-          {/* Beta Telemetry Feedback Button */}
+          {/* Beta Telemetry Feedback Button (Desktop/Tablet) */}
           {onOpenBetaFeedback && (
             <button
               id="nav-beta-feedback-btn"
@@ -375,28 +394,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 tacticalAudio.playRadarPing(800);
                 onOpenBetaFeedback();
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 md:py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-300 font-mono-tactical text-xs cursor-pointer"
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 md:py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-300 font-mono-tactical text-xs cursor-pointer"
               title="Report Field Beta Issue or Feedback"
             >
               <Bug className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Beta Feedback</span>
+              <span className="hidden md:inline">Beta Feedback</span>
             </button>
           )}
-          {/* Mobile YouTube Channel Button */}
-          <a
-            id="mobile-nav-youtube-btn"
-            href={youtubeChannelUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => tacticalAudio.playRadarPing(880)}
-            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 font-mono-tactical text-xs cursor-pointer"
-            title="Open YouTube Channel"
-          >
-            <svg className="w-3.5 h-3.5 fill-current text-red-400" viewBox="0 0 24 24">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span className="text-xs font-semibold">YT</span>
-          </a>
 
           {/* Mobile Guide Button */}
           <button
@@ -405,11 +409,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               tacticalAudio.playRadarPing(850);
               onOpenGuide();
             }}
-            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono-tactical text-xs cursor-pointer"
+            className="md:hidden min-h-[38px] flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono-tactical text-xs cursor-pointer"
             title="User Guide & Field Manual"
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-semibold">Guide</span>
+            <span className="text-[11px] font-semibold">Guide</span>
           </button>
 
           {/* Desktop YouTube Channel Direct Button */}
@@ -429,7 +433,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ExternalLink className="w-3 h-3 text-red-300" />
           </a>
 
-          {/* Fuel the Radar Ko-fi Button */}
+          {/* Fuel the Radar Ko-fi Button (Desktop/Tablet) */}
           {onOpenDonate && (
             <button
               id="nav-fuel-radar-btn"
@@ -437,12 +441,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 tacticalAudio.playRadarPing(880);
                 onOpenDonate();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 border border-amber-500/45 text-amber-300 hover:text-amber-200 font-mono-tactical text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 md:py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/20 to-amber-600/20 hover:from-amber-500/30 hover:to-amber-600/30 border border-amber-500/45 text-amber-300 hover:text-amber-200 font-mono-tactical text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
               title="Fuel the Radar / Support on Ko-fi (ko-fi.com/raptorlens)"
             >
               <Coffee className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Fuel the Radar</span>
-              <span className="sm:hidden text-xs">Fuel</span>
+              <span className="hidden md:inline">Fuel the Radar</span>
+              <span className="md:hidden text-xs">Fuel</span>
             </button>
           )}
 
@@ -453,17 +457,100 @@ export const Navbar: React.FC<NavbarProps> = ({
               tacticalAudio.playRadarPing(950);
               onOpenLogModal();
             }}
-            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold tracking-wider flex items-center gap-1.5 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+            className="min-h-[38px] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold tracking-wider flex items-center gap-1 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span className="hidden sm:inline">Log Sighting</span>
+            <span className="sm:hidden text-[11px]">Log</span>
           </button>
         </div>
       </div>
 
-      {/* Mobile Tab Strip (Clean 4 Pillars - Only shown in full mode to give Field Scout Lite Mode full top clearance) */}
+      {/* Mobile Swipeable Sector & Quick Tools Bar (Visible on < md screens in Full Mode) */}
       {!isLiteMode && (
-        <div className="grid grid-cols-4 lg:hidden px-2 py-1.5 border-t border-neutral-850 bg-neutral-950/90 backdrop-blur-md gap-1">
+        <div className="md:hidden flex items-center gap-2 px-3 py-1.5 bg-neutral-900/90 border-t border-neutral-850 overflow-x-auto no-scrollbar font-mono-tactical text-[11px]">
+          {/* Sector Selector */}
+          <div className="flex items-center gap-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1 shrink-0">
+            <Compass className="w-3 h-3 text-amber-400 shrink-0" />
+            <select
+              aria-label="Select UK Raptor Sector"
+              value={activeSectorId}
+              onChange={(e) => {
+                tacticalAudio.playRadarPing(880);
+                if (onSelectSector) onSelectSector(e.target.value as SectorId);
+              }}
+              className="bg-transparent text-amber-300 font-bold focus:outline-none cursor-pointer text-[11px] max-w-[140px] truncate"
+            >
+              {UK_SECTORS.map((sec) => (
+                <option key={sec.id} value={sec.id} className="bg-neutral-900 text-neutral-200">
+                  {sec.shortName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* YouTube Channel Direct Link */}
+          <a
+            id="mobile-nav-youtube-btn"
+            href={youtubeChannelUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => tacticalAudio.playRadarPing(880)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 font-semibold shrink-0 cursor-pointer"
+          >
+            <svg className="w-3 h-3 fill-current text-red-400" viewBox="0 0 24 24">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+            <span>YouTube ↗</span>
+          </a>
+
+          {/* Callsign Account */}
+          {onOpenLogin && (
+            <button
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                onOpenLogin();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 shrink-0 cursor-pointer"
+            >
+              <LogIn className="w-3 h-3 text-amber-400" />
+              <span className="font-bold">{currentCallsign}</span>
+            </button>
+          )}
+
+          {/* Fuel the Radar */}
+          {onOpenDonate && (
+            <button
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                onOpenDonate();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold shrink-0 cursor-pointer"
+            >
+              <Coffee className="w-3 h-3 text-amber-400" />
+              <span>Support Cam</span>
+            </button>
+          )}
+
+          {/* Beta Feedback */}
+          {onOpenBetaFeedback && (
+            <button
+              onClick={() => {
+                tacticalAudio.playRadarPing(800);
+                onOpenBetaFeedback();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-400 shrink-0 cursor-pointer"
+            >
+              <Bug className="w-3 h-3 text-amber-400" />
+              <span>Feedback</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Tablet / Mobile Top Tab Strip (Clean 4 Pillars) */}
+      {!isLiteMode && (
+        <div className="grid grid-cols-4 lg:hidden px-2 py-1.5 border-t border-neutral-850 bg-neutral-950/95 backdrop-blur-md gap-1.5">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -471,10 +558,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 tacticalAudio.playRadarPing(900);
                 onTabChange(item.id);
               }}
-              className={`py-2 px-1 rounded-xl text-[11px] font-mono-tactical flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
+              className={`min-h-[44px] py-1.5 px-1 rounded-xl text-[11px] font-mono-tactical flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
                 item.isActive
                   ? 'bg-amber-500/25 text-amber-300 border border-amber-500/60 font-bold shadow-sm'
-                  : 'text-neutral-400 border border-neutral-850 bg-neutral-900/50'
+                  : 'text-neutral-400 border border-neutral-850 bg-neutral-900/50 hover:text-neutral-200'
               }`}
             >
               <div className="flex items-center gap-1">
@@ -484,7 +571,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
               <span className="truncate max-w-full text-[10px]">
-                {item.id === 'dispatches' ? 'Summit Cam' : item.id === 'map' ? 'Radar' : item.id === 'silhouette' ? 'ID Guide' : 'Community'}
+                {item.id === 'dispatches' ? 'Summit Cam' : item.id === 'map' ? 'Radar Map' : item.id === 'silhouette' ? 'ID & Calls' : 'Community'}
               </span>
             </button>
           ))}

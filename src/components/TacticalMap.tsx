@@ -179,9 +179,11 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
   const [showTrafficLightModal, setShowTrafficLightModal] = useState<boolean>(false);
   const [showSchedule1Modal, setShowSchedule1Modal] = useState<boolean>(false);
 
-  // Zen / Clean Map Mode & Compact Drawer state
+  // Zen / Clean Map Mode & Compact Drawer state (Default collapsed on mobile < 768px so map is unobstructed)
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
-  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState<boolean>(false);
+  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.innerWidth < 768;
+  });
   const [activeDrawerTab, setActiveDrawerTab] = useState<DrawerTab>('layers');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [quickPreset, setQuickPreset] = useState<QuickPreset>('all');
@@ -826,7 +828,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
   const currentSector = UK_SECTORS.find((s) => s.id === activeSectorId) || UK_SECTORS[0];
 
   return (
-    <div className={`relative w-full ${isZenMode || cleanMode ? 'h-[750px] lg:h-[840px]' : 'h-[620px] lg:h-[720px]'} rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-2xl transition-all duration-300`}>
+    <div className={`relative w-full ${isZenMode || cleanMode ? 'h-[520px] sm:h-[750px] lg:h-[840px]' : 'h-[480px] sm:h-[620px] lg:h-[720px]'} rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-2xl transition-all duration-300`}>
       {/* Tactical Leaflet Map Canvas */}
       <div id="tactical-leaflet-map" ref={mapContainerRef} className="w-full h-full z-0" />
 
@@ -853,7 +855,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       {/* TOP TACTICAL HUD OVERLAY (Hidden in Zen Mode) */}
       {!isZenMode && (
-        <div className="absolute top-3 left-3 right-16 z-10 pointer-events-none flex flex-col gap-2">
+        <div className="absolute top-2.5 sm:top-3 left-2.5 sm:left-3 right-12 sm:right-16 z-10 pointer-events-none flex flex-col gap-1.5 sm:gap-2">
           {/* Top Row: Sector Switcher, Quick Search, Zen Mode Button & Hotspot Vectors */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">

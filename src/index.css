@@ -101,3 +101,29 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* Mobile-first viewport & touch optimizations */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, select, input {
+  touch-action: manipulation;
+}
+
+/* Hide scrollbars on horizontal mobile swipe carousels while preserving scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding for notched iPhones & modern Android gesture bars */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+

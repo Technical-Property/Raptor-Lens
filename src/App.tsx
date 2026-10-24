@@ -305,12 +305,12 @@ export default function App() {
   const [selectedSpecies, setSelectedSpecies] = useState<RaptorSpecies | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Mobile / Field Scout Lite Mode (optimized for smartphone touch & windswept ridges)
+  // Mobile / Field Scout Lite Mode (optional 1-tap pocket mode; defaults to false so mobile users see the Live Summit Cam & Radar Map immediately)
   const [isLiteMode, setIsLiteMode] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('raptorlens_lite_mode');
+      const saved = localStorage.getItem('raptorlens_pocket_lite_v2');
       if (saved !== null) return saved === 'true';
-      return typeof window !== 'undefined' && window.innerWidth < 640;
+      return false;
     } catch {
       return false;
     }
@@ -430,7 +430,7 @@ export default function App() {
   // Persist Lite Mode preference
   useEffect(() => {
     try {
-      localStorage.setItem('raptorlens_lite_mode', isLiteMode.toString());
+      localStorage.setItem('raptorlens_pocket_lite_v2', isLiteMode.toString());
     } catch {}
   }, [isLiteMode]);
 
@@ -876,9 +876,7 @@ export default function App() {
       <div className="relative z-10 flex flex-col min-h-screen">
         {/* Toast Alert */}
         {toastMessage && (
-          <div className={`fixed right-5 z-50 bg-neutral-950/95 border border-amber-500/80 text-amber-300 font-mono-tactical text-xs px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 backdrop-blur-xl animate-bounce transition-all ${
-            isLiteMode ? 'bottom-20 sm:bottom-24' : 'bottom-5'
-          }`}>
+          <div className="fixed left-3 right-3 sm:left-auto sm:right-5 bottom-20 lg:bottom-5 z-50 bg-neutral-950/95 border border-amber-500/80 text-amber-300 font-mono-tactical text-xs px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 backdrop-blur-xl animate-bounce transition-all">
             <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
             <span>{toastMessage}</span>
           </div>
@@ -932,6 +930,10 @@ export default function App() {
               currentCallsign={currentCallsign}
               onSaveSighting={handleSaveSighting}
               onSwitchToFullMode={() => setIsLiteMode(false)}
+              onOpenLiveCam={() => {
+                setIsLiteMode(false);
+                handleTabChange('dispatches');
+              }}
               onOpenBetaFeedback={() => setIsBetaFeedbackOpen(true)}
               onOpenFieldGuide={() => setIsGuideModalOpen(true)}
               onOpenDonate={() => setIsDonateModalOpen(true)}
@@ -1312,10 +1314,98 @@ export default function App() {
       )}
     </main>
 
+        {/* Fixed Mobile Bottom Thumb-Zone Navigation Bar (Shown on < lg screens in Full Mode) */}
+        {!isLiteMode && (
+          <nav
+            aria-label="Mobile Bottom Navigation"
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-800 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.85)]"
+          >
+            <div className="max-w-lg mx-auto grid grid-cols-5 gap-1 font-mono-tactical">
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(880);
+                  handleTabChange('dispatches');
+                }}
+                className={`min-h-[48px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+                  activeTab === 'dispatches'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 font-bold'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <Mountain className="w-4 h-4 text-rose-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                </div>
+                <span className="text-[10px] truncate">Live Cam</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(900);
+                  handleTabChange('map');
+                }}
+                className={`min-h-[48px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+                  activeTab === 'map'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/60 font-bold'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Compass className="w-4 h-4 text-emerald-400" />
+                <span className="text-[10px] truncate">Radar Map</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(950);
+                  setLogModalPrefill({});
+                  setIsLogModalOpen(true);
+                }}
+                className="min-h-[48px] py-1 px-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-amber-500/25 cursor-pointer transition-transform active:scale-95"
+              >
+                <Plus className="w-4 h-4 stroke-[2.8]" />
+                <span className="text-[10px] truncate">Log Spot</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(900);
+                  handleTabChange('silhouette');
+                }}
+                className={`min-h-[48px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+                  activeTab === 'silhouette' || activeTab === 'quiz'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 font-bold'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Eye className="w-4 h-4 text-cyan-400" />
+                <span className="text-[10px] truncate">ID &amp; Calls</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(900);
+                  handleTabChange('community');
+                }}
+                className={`min-h-[48px] py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-all ${
+                  activeTab === 'community' || activeTab === 'sightings'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 font-bold'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Users className="w-4 h-4 text-amber-400" />
+                <span className="text-[10px] truncate">Community</span>
+              </button>
+            </div>
+          </nav>
+        )}
+
         {/* Footer & Ecological Field Protocol */}
-        <footer className={`bg-neutral-950/90 backdrop-blur-md border-t border-neutral-800/90 py-6 px-4 font-mono-tactical text-xs text-neutral-400 mt-auto transition-all ${
-          isLiteMode ? 'pb-28 sm:pb-32 pb-[calc(7.5rem+env(safe-area-inset-bottom))]' : 'pb-8 sm:pb-12'
-        }`}>
+        <footer className="bg-neutral-950/90 backdrop-blur-md border-t border-neutral-800/90 py-6 px-4 font-mono-tactical text-xs text-neutral-400 mt-auto transition-all pb-28 lg:pb-12">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />

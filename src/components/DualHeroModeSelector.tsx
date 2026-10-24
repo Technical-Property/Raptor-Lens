@@ -33,13 +33,90 @@ export const DualHeroModeSelector: React.FC<DualHeroModeSelectorProps> = ({
   const isSummit = currentPerspective === 'summit-trail';
   const isRadar = currentPerspective === 'wildlife-radar';
 
+  const [showMobileDetails, setShowMobileDetails] = React.useState(false);
+
   return (
     <section 
       aria-label="Expedition View Mode Selector"
-      className="bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 rounded-2xl p-3.5 sm:p-5 shadow-2xl space-y-4"
+      className="bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 rounded-2xl p-2.5 sm:p-5 shadow-2xl space-y-2.5 sm:space-y-4"
     >
-      {/* Top Clarifying Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-neutral-800/80">
+      {/* Mobile Compact Dual-Lens Switcher (Keeps Live Stream & Map Above the Fold on Phones) */}
+      <div className="md:hidden space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[10px] font-mono-tactical uppercase tracking-wider text-amber-400 font-bold">
+              CHOOSE LENS • {activeSectorShortName}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowMobileDetails((prev) => !prev)}
+            className="text-[10px] font-mono-tactical text-neutral-400 hover:text-amber-300 underline cursor-pointer py-0.5 px-1"
+          >
+            {showMobileDetails ? 'Hide Info' : 'Compare Views'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              tacticalAudio.playRadarPing(880);
+              onSelectPerspective('summit-trail');
+            }}
+            className={`min-h-[52px] p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 cursor-pointer ${
+              isSummit
+                ? 'bg-amber-500/20 border-amber-500 text-amber-200 ring-1 ring-amber-500/40 shadow-md'
+                : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              isSummit ? 'bg-amber-500 text-neutral-950' : 'bg-neutral-800 text-amber-400'
+            }`}>
+              <Mountain className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-display-tactical text-xs font-bold text-neutral-100 truncate">
+                Summit &amp; Cam
+              </div>
+              <div className="text-[10px] font-mono-tactical text-amber-300/90 truncate">
+                Live Stream &amp; Weather
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              tacticalAudio.playRadarPing(920);
+              onSelectPerspective('wildlife-radar');
+            }}
+            className={`min-h-[52px] p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 cursor-pointer ${
+              isRadar
+                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-200 ring-1 ring-emerald-500/40 shadow-md'
+                : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              isRadar ? 'bg-emerald-500 text-neutral-950' : 'bg-neutral-800 text-emerald-400'
+            }`}>
+              <Compass className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-display-tactical text-xs font-bold text-neutral-100 truncate">
+                Airspace Radar
+              </div>
+              <div className="text-[10px] font-mono-tactical text-emerald-300/90 truncate">
+                Map &amp; {sightingsCount} Blips
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Top Clarifying Header (Desktop md+) */}
+      <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-neutral-800/80">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
@@ -94,8 +171,8 @@ export const DualHeroModeSelector: React.FC<DualHeroModeSelectorProps> = ({
         </div>
       </div>
 
-      {/* The Two Distinct Choice Doors (Side-by-Side Cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+      {/* The Two Distinct Choice Doors (Side-by-Side Cards on Desktop, expandable on Mobile) */}
+      <div className={`${showMobileDetails ? 'grid' : 'hidden md:grid'} grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4`}>
         {/* DOOR 1: SUMMIT & TRAIL CONDITIONS */}
         <div
           id="select-door-summit"
@@ -356,7 +433,7 @@ export const DualHeroModeSelector: React.FC<DualHeroModeSelectorProps> = ({
       </div>
 
       {/* Bottom Orientation Bar */}
-      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono-tactical text-neutral-400 px-1">
+      <div className={`${showMobileDetails ? 'flex' : 'hidden md:flex'} pt-2 flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono-tactical text-neutral-400 px-1`}>
         <div className="flex items-center gap-2">
           <span className="text-neutral-500 font-bold uppercase text-[10px]">CURRENTLY SHOWING ON SCREEN:</span>
           {isSummit ? (

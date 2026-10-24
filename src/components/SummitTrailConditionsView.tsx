@@ -603,9 +603,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         </div>
 
         {/* Station Cam + Free Live Raptor Cams Bar */}
-        <div className="bg-neutral-900/90 border-b border-neutral-800 px-3.5 sm:px-4 py-2 flex items-center justify-between text-xs font-mono-tactical flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold mr-1">
+        <div className="bg-neutral-900/90 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs font-mono-tactical gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full xl:w-auto">
+            <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold mr-1 shrink-0">
               Live Feeds:
             </span>
             {POPULAR_CAMERA_PRESETS.map((cam) => {
@@ -621,7 +621,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     setCustomChannelInput(cam.channelUrl);
                     setStreamMode('video');
                   }}
-                  className={`px-2.5 py-1 rounded-lg border text-[10px] cursor-pointer transition-all flex items-center gap-1 ${
+                  className={`min-h-[36px] sm:min-h-0 px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-lg border text-[11px] sm:text-[10px] cursor-pointer transition-all flex items-center gap-1 shrink-0 ${
                     isSelected
                       ? isPrimaryStation
                         ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-bold shadow-sm'
@@ -638,7 +638,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             })}
           </div>
 
-          <span className="text-[10px] text-neutral-400 hidden xl:inline">
+          <span className="text-[10px] text-neutral-400 hidden xl:inline shrink-0">
             ID: <code className="text-amber-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">{activeVideoId}</code>
           </span>
         </div>
@@ -1028,14 +1028,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
             {/* 1-Click "Bird on Cam Right Now!" Live DVR Timestamp Bar */}
             <div className="pt-2 border-t border-neutral-800/90 space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0"></span>
                   <span className="text-neutral-100 font-bold text-[11px]">
                     🦅 Spotted a Bird on Cam Right Now? Drop a Live DVR Rewind Marker:
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5">
                   {[
                     { label: '🦅 On Perch View', zone: 'Perch View', species: 'Common Kestrel' },
                     { label: '🌾 On Field View', zone: 'Field View', species: 'Common Buzzard' },
@@ -1046,7 +1046,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                       key={btn.zone}
                       type="button"
                       onClick={() => handleInstantDvrFlag(btn.zone, btn.species)}
-                      className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 hover:text-white font-bold text-[10px] cursor-pointer transition-all shadow-sm"
+                      className="min-h-[38px] sm:min-h-0 px-2.5 py-1.5 sm:py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 hover:text-white font-bold text-[11px] sm:text-[10px] cursor-pointer transition-all shadow-sm flex items-center justify-center"
                       title={`Drop a live timestamp marker for ${btn.zone}`}
                     >
                       {btn.label}
@@ -1342,7 +1342,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 const playing = tacticalAudio.toggleDownlandBreeze();
                 setIsBreezeActive(playing);
               }}
-              className={`px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer transition-colors ${
+              className={`min-h-[32px] px-2.5 py-1 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
                 isBreezeActive
                   ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                   : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200'
@@ -1353,7 +1353,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </button>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px]">
+          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-1.5 text-[11px] sm:text-[10px]">
             {[
               { id: 'red-kite', name: 'Red Kite', hint: 'Real Call' },
               { id: 'buzzard', name: 'Buzzard', hint: 'Real Call' },
@@ -1373,7 +1373,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     });
                     setActiveAudioCall(started ? bird.id : null);
                   }}
-                  className={`p-1.5 rounded-lg border text-center cursor-pointer transition-all ${
+                  className={`min-h-[46px] p-2 rounded-xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
                     isPlaying
                       ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold scale-[1.02] ring-1 ring-amber-400/50'
                       : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-amber-500/40 hover:text-amber-300'
@@ -1397,20 +1397,20 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       {/* 3. Clean Progressive Detail Tabs (No Endless Scrolling) */}
       <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
         {/* Tab Headers */}
-        <div className="flex items-center border-b border-neutral-850 bg-neutral-900/50 p-1.5 gap-1.5 font-mono-tactical text-xs flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center border-b border-neutral-850 bg-neutral-900/50 p-1.5 gap-1.5 font-mono-tactical text-xs">
           <button
             onClick={() => {
               tacticalAudio.playRadarPing(800);
               setActiveTab('parking');
             }}
-            className={`px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`min-h-[42px] px-3 py-2 rounded-xl flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer transition-colors ${
               activeTab === 'parking'
                 ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold'
-                : 'text-neutral-400 hover:text-neutral-200'
+                : 'text-neutral-400 hover:text-neutral-200 bg-neutral-900/40 sm:bg-transparent'
             }`}
           >
-            <Car className="w-3.5 h-3.5" />
-            <span>Trailhead Parking &amp; Access</span>
+            <Car className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Parking &amp; Access</span>
           </button>
 
           <button
@@ -1418,14 +1418,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               tacticalAudio.playRadarPing(800);
               setActiveTab('distances');
             }}
-            className={`px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`min-h-[42px] px-3 py-2 rounded-xl flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer transition-colors ${
               activeTab === 'distances'
                 ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold'
-                : 'text-neutral-400 hover:text-neutral-200'
+                : 'text-neutral-400 hover:text-neutral-200 bg-neutral-900/40 sm:bg-transparent'
             }`}
           >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>Ridgeway Trail Distances</span>
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Trail Distances</span>
           </button>
 
           <button
@@ -1433,14 +1433,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               tacticalAudio.playRadarPing(800);
               setActiveTab('dispatches');
             }}
-            className={`px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`min-h-[42px] px-3 py-2 rounded-xl flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer transition-colors ${
               activeTab === 'dispatches'
                 ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold'
-                : 'text-neutral-400 hover:text-neutral-200'
+                : 'text-neutral-400 hover:text-neutral-200 bg-neutral-900/40 sm:bg-transparent'
             }`}
           >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Community Spotter Reports</span>
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Spotter Reports</span>
           </button>
 
           <button
@@ -1448,14 +1448,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               tacticalAudio.playRadarPing(800);
               setActiveTab('kit');
             }}
-            className={`px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
+            className={`min-h-[42px] px-3 py-2 rounded-xl flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer transition-colors ${
               activeTab === 'kit'
                 ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-300 font-bold'
-                : 'text-neutral-400 hover:text-neutral-200'
+                : 'text-neutral-400 hover:text-neutral-200 bg-neutral-900/40 sm:bg-transparent'
             }`}
           >
-            <Binoculars className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Optics &amp; Trail Kit</span>
+            <Binoculars className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">Optics &amp; Trail Kit</span>
           </button>
         </div>
 

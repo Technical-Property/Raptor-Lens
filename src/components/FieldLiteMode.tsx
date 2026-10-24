@@ -45,6 +45,7 @@ interface FieldLiteModeProps {
   currentCallsign: string;
   onSaveSighting: (sighting: SightingLog) => void;
   onSwitchToFullMode: () => void;
+  onOpenLiveCam?: () => void;
   onOpenBetaFeedback: () => void;
   onOpenFieldGuide: () => void;
   onOpenDonate?: () => void;
@@ -61,11 +62,13 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
   currentCallsign,
   onSaveSighting,
   onSwitchToFullMode,
+  onOpenLiveCam,
   onOpenBetaFeedback,
   onOpenFieldGuide,
   onOpenDonate,
 }) => {
   const [activeLiteTab, setActiveLiteTab] = useState<LiteSubTab>('quick-log');
+  const [playingSpeciesCallId, setPlayingSpeciesCallId] = useState<string | null>(null);
 
   const isOnline = useOnlineStatus();
   const { isInstallable, install } = usePWAInstall();
@@ -311,16 +314,30 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
               </button>
             )}
 
+            {onOpenLiveCam && (
+              <button
+                onClick={() => {
+                  tacticalAudio.playRadarPing(880);
+                  onOpenLiveCam();
+                }}
+                title="Watch Live Hackpen Hill & Barbury Castle Summit Camera"
+                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/50 text-[10px] font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                <span>Live Cam</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
                 onSwitchToFullMode();
               }}
               title="Switch to full desktop radar view"
-              className="px-2 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 border border-neutral-700 text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+              className="min-h-[34px] px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-neutral-100 border border-neutral-700 text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
             >
               <Maximize2 className="w-3 h-3 text-cyan-400" />
-              <span>Full Mode</span>
+              <span>Full View</span>
             </button>
           </div>
         </div>
@@ -813,17 +830,26 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
                     <div className="flex items-center justify-between gap-1">
                       <h4 className="font-bold text-xs text-neutral-100 truncate">{spec.commonName}</h4>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-amber-400 font-semibold">{spec.wingspanCm}</span>
-                        <a
-                          href="https://merlin.allaboutbirds.org/"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-cyan-300 text-[10px] font-mono cursor-pointer transition-colors flex items-center gap-0.5"
-                          title={`Sound ID for ${spec.commonName} via Merlin Bird ID (Cornell Lab)`}
+                        <span className="text-[10px] text-amber-400 font-semibold hidden xs:inline">{spec.wingspanCm}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            tacticalAudio.setMuted(false);
+                            const started = tacticalAudio.playSpeciesCall(spec.id, () => {
+                              setPlayingSpeciesCallId((prev) => (prev === spec.id ? null : prev));
+                            });
+                            setPlayingSpeciesCallId(started ? spec.id : null);
+                          }}
+                          className={`min-h-[32px] px-2 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                            playingSpeciesCallId === spec.id
+                              ? 'bg-emerald-500/25 border-emerald-400 text-emerald-200'
+                              : 'bg-neutral-800 hover:bg-neutral-750 border-neutral-700 text-cyan-300'
+                          }`}
+                          title={`Play real recorded ${spec.commonName} call`}
                         >
-                          <span className="text-cyan-400 font-bold">Merlin</span>
-                          <ExternalLink className="w-2.5 h-2.5 text-neutral-400" />
-                        </a>
+                          <Volume2 className="w-3 h-3" />
+                          <span>{playingSpeciesCallId === spec.id ? 'Stop' : 'Call'}</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -831,7 +857,7 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
                             setSelectedSpeciesId(spec.id);
                             handleSelectLiteTab('quick-log');
                           }}
-                          className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-neutral-950 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          className="min-h-[32px] px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-neutral-950 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
                           title={`1-Tap Log a ${spec.commonName} sighting`}
                         >
                           <Plus className="w-3 h-3" />
