@@ -517,39 +517,24 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       {/* 1. Live Summit Camera & Optical Spotter Stage */}
       <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl relative">
         {/* Stream Header & Clean Actions */}
-        <div className="bg-neutral-900/95 border-b border-neutral-800 px-3.5 sm:px-4 py-2.5 flex items-center justify-between text-xs font-mono-tactical flex-wrap gap-2">
+        <div className="bg-neutral-900/95 border-b border-neutral-800 px-3.5 sm:px-5 py-3 flex items-center justify-between text-xs sm:text-sm flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
             <span className="font-bold text-neutral-100">
               {isLocalIpAddress(activeVideoId)
                 ? 'Station Hardware (Local LAN)'
                 : activeVideoId === DEFAULT_CAMERA_VIDEO_ID
-                ? 'RaptorLens Station Cam (Rolling 4-View Tour)'
+                ? 'Live Ridgeway Station Webcam'
                 : POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.name || 'Live Raptor Camera'}
             </span>
-            <span className="text-[10px] text-amber-300/90 hidden sm:inline">
+            <span className="text-xs text-amber-300/90 hidden sm:inline">
               {activeVideoId === DEFAULT_CAMERA_VIDEO_ID
-                ? '• Hackpen Hill • Barbury Fort • Field • Perch'
-                : `• ${POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.location || '24/7 Live Feed'}`}
+                ? '· Hackpen Hill · Barbury Fort · Field · Perch'
+                : `· ${POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.location || '24/7 Live Feed'}`}
             </span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Direct Channel Link */}
-            <a
-              href={resolvedChannelUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => tacticalAudio.playRadarPing(880)}
-              className="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-              title="Open YouTube Live Broadcast in new tab"
-            >
-              <svg className="w-3.5 h-3.5 fill-current text-red-400" viewBox="0 0 24 24">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-              </svg>
-              <span className="hidden sm:inline">YouTube ↗</span>
-            </a>
-
             <button
               type="button"
               onClick={() => {
@@ -558,11 +543,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 setStreamMode('video');
                 setPlayerRefreshKey((prev) => prev + 1);
               }}
-              className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Reload live stream player"
             >
               <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Reload Stream</span>
+              <span>Reload</span>
             </button>
 
             <button
@@ -570,11 +555,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 tacticalAudio.playRadarPing(800);
                 setShowTroubleshootModal(true);
               }}
-              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              className="bg-neutral-800 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Switch cameras or troubleshoot feed"
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Camera Help</span>
+              <span>Stream Help</span>
             </button>
 
             <button
@@ -582,11 +567,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 tacticalAudio.playRadarPing(760);
                 setShowFeedInput(!showFeedInput);
               }}
-              className="bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              className="bg-neutral-800 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Configure station stream or explore guest raptor cameras"
             >
               <Settings className="w-3.5 h-3.5 text-neutral-400" />
-              <span>{showFeedInput ? 'Close' : 'All Cameras'}</span>
+              <span>{showFeedInput ? 'Close Settings' : 'More Cams'}</span>
             </button>
 
             <button
@@ -594,19 +579,19 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 tacticalAudio.playRadarPing(880);
                 setShowQuickSpotModal(true);
               }}
-              className="bg-amber-500 hover:bg-amber-400 text-neutral-950 px-2.5 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors shadow"
+              className="bg-amber-500 hover:bg-amber-400 text-neutral-950 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>+ Log Spot</span>
+              <span>+ Log Sighting</span>
             </button>
           </div>
         </div>
 
         {/* Station Cam + Free Live Raptor Cams Bar */}
-        <div className="bg-neutral-900/90 border-b border-neutral-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs font-mono-tactical gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full xl:w-auto">
-            <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold mr-1 shrink-0">
-              Live Feeds:
+        <div className="bg-neutral-900/90 border-b border-neutral-800 px-3.5 sm:px-5 py-2.5 flex items-center justify-between text-xs gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full">
+            <span className="text-xs text-neutral-400 font-semibold mr-1 shrink-0">
+              Select Camera:
             </span>
             {POPULAR_CAMERA_PRESETS.map((cam) => {
               const isSelected = activeVideoId === cam.videoId;
@@ -621,7 +606,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     setCustomChannelInput(cam.channelUrl);
                     setStreamMode('video');
                   }}
-                  className={`min-h-[36px] sm:min-h-0 px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-lg border text-[11px] sm:text-[10px] cursor-pointer transition-all flex items-center gap-1 shrink-0 ${
+                  className={`min-h-[36px] sm:min-h-0 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
                     isSelected
                       ? isPrimaryStation
                         ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-bold shadow-sm'
@@ -637,10 +622,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               );
             })}
           </div>
-
-          <span className="text-[10px] text-neutral-400 hidden xl:inline shrink-0">
-            ID: <code className="text-amber-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">{activeVideoId}</code>
-          </span>
         </div>
 
         {/* All Cameras & Station Configuration Drawer */}
@@ -1204,93 +1185,93 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         </div>
       </div>
 
-      {/* 2. The 3-Second Glanceable Summary Bar (Live Open-Meteo Telemetry) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono-tactical text-xs">
-        {/* Pill 1: Ridge Wind */}
-        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span className="flex items-center gap-1">
-              <span>SUMMIT WIND</span>
+      {/* 2. The 3-Second Glanceable Weather Summary Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs sm:text-sm">
+        {/* Card 1: Ridge Wind */}
+        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-neutral-400 text-xs font-medium">
+            <span className="flex items-center gap-1.5">
+              <span>Summit Wind</span>
               {isWeatherLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Live Open-Meteo Telemetry"></span>}
             </span>
-            <Wind className="w-3.5 h-3.5 text-amber-400" />
+            <Wind className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="mt-1">
-            <div className="text-base sm:text-lg font-bold text-neutral-100">
+          <div className="mt-1.5">
+            <div className="text-lg sm:text-xl font-bold text-neutral-100">
               {weather.windDirection} {weather.windSpeedKt} <span className="text-xs font-normal text-neutral-400">kts</span>
             </div>
-            <div className="text-[10px] text-amber-300">
-              Gusts to {weather.windGustKt} kts • Lift: {weather.soaringLiftRating}
+            <div className="text-xs text-amber-300/90 mt-0.5">
+              Gusts to {weather.windGustKt} kts · Lift: {weather.soaringLiftRating}
             </div>
           </div>
         </div>
 
-        {/* Pill 2: Visibility & Fog */}
-        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span>HORIZON VIEW</span>
-            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+        {/* Card 2: Visibility & Fog */}
+        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-neutral-400 text-xs font-medium">
+            <span>Horizon View</span>
+            <Eye className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="mt-1">
-            <div className="text-base sm:text-lg font-bold text-emerald-400">
+          <div className="mt-1.5">
+            <div className="text-lg sm:text-xl font-bold text-emerald-400">
               {weather.visibilityKm >= 25 ? `Clear (${weather.visibilityKm} km)` : `${weather.visibilityKm} km View`}
             </div>
-            <div className="text-[10px] text-neutral-300 truncate" title={weather.cloudCover}>
+            <div className="text-xs text-neutral-300 truncate mt-0.5" title={weather.cloudCover}>
               {weather.cloudCover}
             </div>
           </div>
         </div>
 
-        {/* Pill 3: Temp & Air */}
-        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span>TEMPERATURE</span>
-            <Thermometer className="w-3.5 h-3.5 text-cyan-400" />
+        {/* Card 3: Temp & Air */}
+        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-neutral-400 text-xs font-medium">
+            <span>Temperature</span>
+            <Thermometer className="w-4 h-4 text-cyan-400" />
           </div>
-          <div className="mt-1">
-            <div className="text-base sm:text-lg font-bold text-neutral-100">
+          <div className="mt-1.5">
+            <div className="text-lg sm:text-xl font-bold text-neutral-100">
               {weather.temperatureC}°<span className="text-xs font-normal text-neutral-400">C</span>
             </div>
-            <div className="text-[10px] text-cyan-300">
-              Feels like {weather.windChillC}°C at 262m
+            <div className="text-xs text-cyan-300/90 mt-0.5">
+              Feels like {weather.windChillC}°C on the ridge
             </div>
           </div>
         </div>
 
-        {/* Pill 4: Footing & Trailhead */}
-        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-neutral-400 text-[10px]">
-            <span>TRAIL &amp; SUNSET</span>
-            <Mountain className="w-3.5 h-3.5 text-amber-400" />
+        {/* Card 4: Footing & Trailhead */}
+        <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-neutral-400 text-xs font-medium">
+            <span>Trail &amp; Sunset</span>
+            <Mountain className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="mt-1">
-            <div className="text-base sm:text-lg font-bold text-neutral-100">
+          <div className="mt-1.5">
+            <div className="text-lg sm:text-xl font-bold text-neutral-100">
               Dry &amp; Firm <span className="text-emerald-400 text-xs font-normal">(9/10)</span>
             </div>
-            <div className="text-[10px] text-emerald-400 font-semibold">
-              Sunset {weather.sunsetTime || '19:52'} • Golden Hr {weather.goldenHourTime || '18:55'}
+            <div className="text-xs text-emerald-400 font-medium mt-0.5">
+              Sunset {weather.sunsetTime || '19:52'} · Golden Hr {weather.goldenHourTime || '18:55'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2B. Hourly "Best Raptor Soaring Window" & Interactive Ridgeway Audio ID Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 font-mono-tactical text-xs">
-        {/* Left 7 Cols: 12-Hour Raptor Soaring & Thermal Window Forecast */}
-        <div className="lg:col-span-7 bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2 shadow-lg">
+      {/* 2B. Hourly "Best Raptor Soaring Window" & Interactive Real Bird Calls */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 text-xs">
+        {/* Left 7 Cols: Hourly Raptor Soaring Forecast */}
+        <div className="lg:col-span-7 bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-2.5 shadow-lg">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-neutral-200 font-bold text-[11px]">
-                RIDGEWAY RAPTOR SOARING FORECAST
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span className="text-neutral-100 font-bold text-xs sm:text-sm">
+                Today&apos;s Raptor Soaring Forecast
               </span>
             </div>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold">
-              Peak Window: {weather.peakSoaringWindow || '12:00 – 15:00 UK (88% Lift)'}
+            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+              Best Time: {weather.peakSoaringWindow || '12:00 – 15:00 UK (88% Lift)'}
             </span>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-[10px]">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
             {(weather.hourlySoaring && weather.hourlySoaring.length > 0
               ? weather.hourlySoaring
               : [
@@ -1306,9 +1287,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 key={slot.time}
                 className="p-2 rounded-lg bg-neutral-900/80 border border-neutral-800/90 text-center space-y-0.5"
               >
-                <div className="text-neutral-400 font-bold">{slot.time}</div>
+                <div className="text-neutral-300 font-semibold">{slot.time}</div>
                 <div
-                  className={`text-xs font-bold ${
+                  className={`text-xs sm:text-sm font-bold ${
                     slot.liftScore >= 80
                       ? 'text-emerald-400'
                       : slot.liftScore >= 60
@@ -1318,7 +1299,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 >
                   {slot.liftScore}% Lift
                 </div>
-                <div className="text-[9px] text-neutral-400">
+                <div className="text-[11px] text-neutral-400">
                   {slot.windDirection} {slot.windSpeedKt}kt
                 </div>
               </div>
@@ -1326,13 +1307,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           </div>
         </div>
 
-        {/* Right 5 Cols: Interactive Ridgeway Raptor Call & Downland Breeze Audio ID */}
-        <div className="lg:col-span-5 bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2 shadow-lg flex flex-col justify-between">
+        {/* Right 5 Cols: Real Bird Call Audio Guide */}
+        <div className="lg:col-span-5 bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-2.5 shadow-lg flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-neutral-200 font-bold text-[11px]">
-                RAPTOR CALL ID &amp; DOWNLAND AUDIO
+            <div className="flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-amber-400" />
+              <span className="text-neutral-100 font-bold text-xs sm:text-sm">
+                Listen to Real Bird Calls
               </span>
             </div>
             <button
@@ -1342,24 +1323,24 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 const playing = tacticalAudio.toggleDownlandBreeze();
                 setIsBreezeActive(playing);
               }}
-              className={`min-h-[32px] px-2.5 py-1 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
+              className={`min-h-[32px] px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                 isBreezeActive
                   ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                  : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                  : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:text-neutral-100'
               }`}
               title="Play gentle ambient Wiltshire downland breeze while watching the live camera"
             >
-              {isBreezeActive ? '🌬️ Breeze: ON' : '🌬️ Downland Breeze'}
+              {isBreezeActive ? '🌬️ Breeze: On' : '🌬️ Hilltop Breeze'}
             </button>
           </div>
 
-          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-1.5 text-[11px] sm:text-[10px]">
+          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-1.5 text-xs">
             {[
-              { id: 'red-kite', name: 'Red Kite', hint: 'Real Call' },
-              { id: 'buzzard', name: 'Buzzard', hint: 'Real Call' },
-              { id: 'kestrel', name: 'Kestrel', hint: 'Real Call' },
-              { id: 'peregrine', name: 'Peregrine', hint: 'Real Call' },
-              { id: 'barn-owl', name: 'Barn Owl', hint: 'Real Call' },
+              { id: 'red-kite', name: 'Red Kite', hint: 'Play Call' },
+              { id: 'buzzard', name: 'Buzzard', hint: 'Play Call' },
+              { id: 'kestrel', name: 'Kestrel', hint: 'Play Call' },
+              { id: 'peregrine', name: 'Peregrine', hint: 'Play Call' },
+              { id: 'barn-owl', name: 'Barn Owl', hint: 'Play Call' },
             ].map((bird) => {
               const isPlaying = activeAudioCall === bird.id;
               return (
@@ -1373,10 +1354,10 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     });
                     setActiveAudioCall(started ? bird.id : null);
                   }}
-                  className={`min-h-[46px] p-2 rounded-xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
+                  className={`min-h-[48px] p-2 rounded-xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center ${
                     isPlaying
                       ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold scale-[1.02] ring-1 ring-amber-400/50'
-                      : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-amber-500/40 hover:text-amber-300'
+                      : 'bg-neutral-900/80 border-neutral-800 text-neutral-200 hover:border-amber-500/40 hover:text-amber-300'
                   }`}
                   title={`Play real recorded ${bird.name} call (Click again to stop)`}
                 >
@@ -1384,7 +1365,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     {isPlaying ? '⏹️ ' : '🔊 '}
                     {bird.name.split(' ').pop()}
                   </div>
-                  <div className="text-[9px] text-neutral-400 truncate">
+                  <div className="text-[11px] text-neutral-400 truncate">
                     {isPlaying ? 'Playing...' : bird.hint}
                   </div>
                 </button>

@@ -951,36 +951,34 @@ export default function App() {
               {/* TAB 1: TACTICAL MAP */}
               {activeTab === 'map' && (
             <div className="space-y-4 sm:space-y-6">
-              {/* Map Header Dossier intro with gentle downland styling */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-950/75 backdrop-blur-md border border-neutral-800/80 p-4 sm:p-5 rounded-2xl shadow-xl">
+              {/* Map Header Intro */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-neutral-950/80 backdrop-blur-md border border-neutral-800/80 p-4 sm:p-5 rounded-2xl shadow-xl">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span className="text-[10px] font-mono-tactical uppercase tracking-wider text-amber-400 font-bold">
-                      {activeSector.name.toUpperCase()} // AIRSPACE RADAR
-                    </span>
+                  <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+                    <Compass className="w-4 h-4 text-amber-400" />
+                    <span>{activeSector.name} · Interactive Raptor Map</span>
                   </div>
                   <h1 className="font-display-tactical text-xl md:text-2xl font-bold text-neutral-100 tracking-tight">
-                    {activeSector.shortName} Raptor Hotspots &amp; Live Sightings
+                    {activeSector.shortName} Hotspots &amp; Live Sightings
                   </h1>
-                  <p className="text-xs text-neutral-300 max-w-3xl leading-relaxed font-sans">
+                  <p className="text-xs sm:text-sm text-neutral-300 max-w-3xl leading-relaxed font-sans">
                     {mapViewMode === 'clean' 
-                      ? `${activeSector.summary} Viewing in Clean Sighting Mode — map and raptor contacts are front and centre.`
-                      : `${activeSector.summary} Primary thermal corridor: ${activeSector.thermalCorridorName}. Key raptors: ${activeSector.keyTargetRaptors.join(', ')}.`}
+                      ? `${activeSector.summary} Showing live raptor sightings and key viewing locations.`
+                      : `${activeSector.summary} Primary soaring corridor: ${activeSector.thermalCorridorName}. Key species: ${activeSector.keyTargetRaptors.join(', ')}.`}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 self-start md:self-auto font-mono-tactical text-xs shrink-0">
+                <div className="flex items-center gap-2.5 self-start md:self-auto text-xs shrink-0">
                   <button
                     onClick={() => setIsGuideModalOpen(true)}
-                    className="bg-neutral-900/80 hover:bg-neutral-800 px-3 py-2 rounded-xl border border-neutral-800 text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow"
+                    className="bg-neutral-900 hover:bg-neutral-800 px-3.5 py-2 rounded-xl border border-neutral-800 text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow"
                   >
-                    <Info className="w-3.5 h-3.5 text-amber-400" />
-                    <span>User Guide</span>
+                    <Info className="w-4 h-4 text-amber-400" />
+                    <span>Site Guide</span>
                   </button>
-                  <div className="bg-neutral-900/80 px-3 py-2 rounded-xl border border-neutral-800 text-right shadow">
-                    <span className="text-[9px] text-neutral-400 block uppercase">RADAR BLIPS</span>
-                    <span className="text-emerald-400 font-bold">{sightings.length} Logged</span>
+                  <div className="bg-neutral-900 px-3.5 py-2 rounded-xl border border-neutral-800 text-right shadow">
+                    <span className="text-[11px] text-neutral-400 block font-medium">Live Sightings</span>
+                    <span className="text-emerald-400 font-bold text-sm">{sightings.length} Logged</span>
                   </div>
                 </div>
               </div>
@@ -1086,12 +1084,12 @@ export default function App() {
 
               {/* Hotspot Quick Cards Summary for Active Sector */}
               <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between text-xs font-mono-tactical text-neutral-400">
+                <div className="flex items-center justify-between text-xs sm:text-sm text-neutral-400">
                   <span className="text-amber-400 font-bold flex items-center gap-2">
-                    <Compass className="w-3.5 h-3.5" />
-                    KEY HOTSPOTS // {activeSector.shortName.toUpperCase()}
+                    <Compass className="w-4 h-4" />
+                    Key Viewing Locations · {activeSector.shortName}
                   </span>
-                  <span>{sectorHotspots.length} Scouting Locations</span>
+                  <span>{sectorHotspots.length} Locations</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sectorHotspots.map((spot) => (

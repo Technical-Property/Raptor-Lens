@@ -56,7 +56,7 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
   onUpvoteDiscussion,
   onLocateHotspot,
 }) => {
-  const [activeSection, setActiveSection] = useState<'skywatches' | 'forum' | 'observers' | 'playbook'>('skywatches');
+  const [activeSection, setActiveSection] = useState<'skywatches' | 'forum' | 'observers'>('skywatches');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [experienceFilter, setExperienceFilter] = useState<string>('ALL');
   
@@ -244,14 +244,14 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
               tacticalAudio.playRadarPing(800);
               setActiveSection('skywatches');
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-mono-tactical font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSection === 'skywatches'
                 ? 'bg-amber-500 text-neutral-950 shadow-lg shadow-amber-500/20 font-bold'
-                : 'bg-neutral-950/80 text-neutral-400 hover:text-neutral-100 border border-neutral-800'
+                : 'bg-neutral-950/80 text-neutral-300 hover:text-neutral-100 border border-neutral-800'
             }`}
           >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Group Skywatches ({skywatches.length})</span>
+            <Calendar className="w-4 h-4" />
+            <span>Group Walks &amp; Skywatches ({skywatches.length})</span>
           </button>
 
           <button
@@ -259,14 +259,14 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
               tacticalAudio.playRadarPing(800);
               setActiveSection('forum');
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-mono-tactical font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSection === 'forum'
                 ? 'bg-amber-500 text-neutral-950 shadow-lg shadow-amber-500/20 font-bold'
-                : 'bg-neutral-950/80 text-neutral-400 hover:text-neutral-100 border border-neutral-800'
+                : 'bg-neutral-950/80 text-neutral-300 hover:text-neutral-100 border border-neutral-800'
             }`}
           >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Field Forum & ID Help ({discussions.length})</span>
+            <MessageSquare className="w-4 h-4" />
+            <span>Field Forum &amp; ID Help ({discussions.length})</span>
           </button>
 
           <button
@@ -274,29 +274,14 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
               tacticalAudio.playRadarPing(800);
               setActiveSection('observers');
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-mono-tactical font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSection === 'observers'
                 ? 'bg-amber-500 text-neutral-950 shadow-lg shadow-amber-500/20 font-bold'
-                : 'bg-neutral-950/80 text-neutral-400 hover:text-neutral-100 border border-neutral-800'
+                : 'bg-neutral-950/80 text-neutral-300 hover:text-neutral-100 border border-neutral-800'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Observer Roster ({observers.length})</span>
-          </button>
-
-          <button
-            onClick={() => {
-              tacticalAudio.playRadarPing(800);
-              setActiveSection('playbook');
-            }}
-            className={`px-4 py-2 rounded-xl text-xs font-mono-tactical font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === 'playbook'
-                ? 'bg-amber-500 text-neutral-950 shadow-lg shadow-amber-500/20 font-bold'
-                : 'bg-neutral-950/80 text-neutral-400 hover:text-neutral-100 border border-neutral-800'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Community Playbook (How to Build)</span>
+            <Users className="w-4 h-4" />
+            <span>Community Members ({observers.length})</span>
           </button>
         </div>
       </div>
@@ -874,102 +859,6 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
               <span>All {filteredObservers.length} Registered Community Members • Join Anytime (No Sighting Logging Required)</span>
             </div>
           )}
-        </div>
-      )}
-
-      {/* SECTION 4: COMMUNITY PLAYBOOK (HOW TO BUILD & GROW YOUR COMMUNITY) */}
-      {activeSection === 'playbook' && (
-        <div className="space-y-6">
-          <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-6 md:p-8 space-y-6 shadow-2xl">
-            <div className="border-b border-neutral-800 pb-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-mono-tactical text-amber-400 font-bold uppercase tracking-wider">
-                  FOUNDER & COORDINATOR BLUEPRINT
-                </span>
-              </div>
-              <h2 className="font-display-tactical text-2xl font-bold text-neutral-100">
-                How to Build & Scale a Thriving Wessex Downland Raptor Community
-              </h2>
-              <p className="text-sm text-neutral-300 font-sans mt-1 leading-relaxed">
-                Practical, field-tested steps to transform occasional birdwatchers into an active, friendly, and scientifically valuable observer collective along the Ridgeway.
-              </p>
-            </div>
-
-            {/* Playbook Pillars */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Pillar 1 */}
-              <div className="bg-neutral-950 p-5 rounded-xl border border-neutral-800 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-display-tactical font-bold text-base">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs">
-                    1
-                  </span>
-                  Partner with Existing Ornithological Networks
-                </div>
-                <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-                  Do not start from scratch. Reach out to the <strong>Wiltshire Ornithological Society (WOS)</strong>, <strong>BTO Wiltshire</strong>, and the <strong>Wessex Raptor Study Group</strong>. Share that you are running a coordinated skywatch and invite their members as verified field mentors.
-                </p>
-              </div>
-
-              {/* Pillar 2 */}
-              <div className="bg-neutral-950 p-5 rounded-xl border border-neutral-800 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-display-tactical font-bold text-base">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs">
-                    2
-                  </span>
-                  Establish Recurring "Anchor Watch" Windows
-                </div>
-                <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-                  Pick a consistent slot—such as <strong>Saturday mornings (09:30–12:00) at Barbury Castle</strong> or <strong>Sunday dawn watches at Hackpen Hill</strong>. Predictability builds habit; casual walkers will learn that experienced observers with spotting scopes gather then.
-                </p>
-              </div>
-
-              {/* Pillar 3 */}
-              <div className="bg-neutral-950 p-5 rounded-xl border border-neutral-800 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-display-tactical font-bold text-base">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs">
-                    3
-                  </span>
-                  Lower the Barrier: Silhouette Literacy
-                </div>
-                <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-                  Many beginners feel intimidated by raptor identification. Use the <strong>Silhouette Drill</strong> in this app as an icebreaker! When a high raptor appears overhead, guide newcomers using wingtip primary notches and tail shape rather than complex plumage details.
-                </p>
-              </div>
-
-              {/* Pillar 4 */}
-              <div className="bg-neutral-950 p-5 rounded-xl border border-neutral-800 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-display-tactical font-bold text-base">
-                  <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs">
-                    4
-                  </span>
-                  Trailhead Notices & QR Code Linking
-                </div>
-                <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-                  Place friendly laminated info sheets on noticeboards at Barbury Castle Country Park and Avebury National Trust hub. Include a QR code directing visitors straight to this applet's live radar and sightings feed.
-                </p>
-              </div>
-            </div>
-
-            {/* Ethical Birding Code of Conduct */}
-            <div className="bg-neutral-950/90 border border-emerald-500/30 p-4 rounded-xl flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div className="text-xs font-sans text-neutral-300 space-y-1">
-                <strong className="text-emerald-300 block font-mono-tactical">
-                  ETHICAL CODE: RAPTOR PROTECTION FIRST
-                </strong>
-                <span>
-                  Never publicize the exact nest locations of Schedule 1 species (such as Peregrine Falcon or Hen Harrier). Keep sightings aggregated to broad sector corridors (e.g. "Hackpen Scarp") rather than exact coordinates during the April–July breeding season.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* End of Playbook Status Badge */}
-          <div className="pt-3 pb-8 text-center text-xs font-mono-tactical text-neutral-400 flex items-center justify-center gap-2 border-t border-neutral-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-            <span>Wessex Downland Collective Playbook • Community Conservation Blueprint</span>
-          </div>
         </div>
       )}
 
