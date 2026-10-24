@@ -1,4 +1,4 @@
-import { BarburySummitWeather } from '../data/camPresets';
+import { BarburySummitWeather, HourlySoaringSlot } from '../data/camPresets';
 
 // Convert wind degrees to 16-point cardinal compass text
 export function getCardinalDirection(deg: number): string {
@@ -20,6 +20,31 @@ export function getWmoWeatherDescription(code: number): string {
   return 'Variable Downland Sky';
 }
 
+function calculateHourlyLiftScore(windKt: number, windDeg: number, rainProb: number, isDay: boolean): number {
+  if (!isDay) {
+    // Dusk/Dawn Owl & Roost activity baseline
+    return Math.max(15, Math.min(45, Math.round(35 - rainProb * 0.3)));
+  }
+  let score = 55;
+  // Optimal ridge wind for Red Kites, Buzzards & Kestrels is 9 to 22 knots
+  if (windKt >= 9 && windKt <= 22) {
+    score += 28;
+  } else if (windKt >= 6 && windKt < 9) {
+    score += 15;
+  } else if (windKt > 22 && windKt <= 28) {
+    score += 12;
+  } else if (windKt > 28) {
+    score -= 15;
+  }
+  // WNW to NNE or SSW to W escarpment alignment bonus
+  if ((windDeg >= 210 && windDeg <= 350) || windDeg <= 30) {
+    score += 12;
+  }
+  // Rain penalty
+  score -= Math.round(rainProb * 0.45);
+  return Math.max(12, Math.min(98, score));
+}
+
 /**
  * Fetches real-time live meteorological telemetry for Barbury Castle Summit
  * Latitude: 51.4851, Longitude: -1.7892, Elevation: 268m ASL (SU 149 763)
@@ -28,7 +53,7 @@ export function getWmoWeatherDescription(code: number): string {
 export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
   const lat = 51.4851;
   const lng = -1.7892;
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FLondon`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,is_day&hourly=temperature_2m,precipitation_probability,wind_speed_10m,wind_direction_10m,is_day&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FLondon&forecast_days=2`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -51,10 +76,9 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
   const pressure = Math.round(cur.surface_pressure ?? 1014);
   const precip = cur.precipitation ?? 0;
   const weatherCode = cur.weather_code ?? 1;
+  const isAfterDark = cur.is_day === 0;
 
   // Approximate cloud base height in metres AGL using Lawrence spread formula:
-  // Spread (T - Td) ~= (100 - RH) / 5
-  // Cloud Base (m) ~= 125 * Spread = 25 * (100 - RH)
   const estimatedCloudBaseM = Math.max(150, Math.min(2200, Math.round(25 * (100 - rh))));
 
   // Visibility calculation: reduced by heavy rain or high humidity fog
@@ -69,9 +93,6 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
     visibilityKm = 22;
   }
 
-  // Barbury Castle Scarp Faces NNW (approx 335°).
-  // Wind from W to N (270° - 020°) produces maximum orographic slope updraft along the scarp.
-  // South/SW winds produce strong crest winds with lee waves and solar thermals.
   let soaringLiftRating: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'LOW' = 'MODERATE';
   if (windSpeed >= 12 && (windDirDeg >= 280 || windDirDeg <= 40)) {
     soaringLiftRating = 'EXCELLENT'; // Perpendicular scarp strike
@@ -97,9 +118,17 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
     walkerAdvisory = `Favourable downland conditions. Chalk tracks firm underfoot with ${windSpeed} kt ${windDirCard} breeze. Good visibility across the Marlborough Downs.`;
   }
 
-  // Parse daily sunset and calculate golden hour (1 hr before sunset)
+  // Parse daily sunrise, sunset and calculate golden hour (1 hr before sunset)
+  let sunriseTime = '07:35';
   let sunsetTime = '18:05';
   let goldenHourTime = '17:05';
+  const rawSunrise = data?.daily?.sunrise?.[0];
+  if (typeof rawSunrise === 'string' && rawSunrise.includes('T')) {
+    const timePart = rawSunrise.split('T')[1];
+    if (timePart && timePart.length >= 5) {
+      sunriseTime = timePart.slice(0, 5);
+    }
+  }
   const rawSunset = data?.daily?.sunset?.[0];
   if (typeof rawSunset === 'string' && rawSunset.includes('T')) {
     const timePart = rawSunset.split('T')[1];
@@ -112,6 +141,53 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
       }
     }
   }
+
+  // Parse next 6 daylight/upcoming hours for the Soaring Forecast Strip
+  const hourlySoaring: HourlySoaringSlot[] = [];
+  let peakSoaringWindow = '11:00 – 15:00 UK (High Escarpment Lift)';
+  try {
+    const times: string[] = data?.hourly?.time || [];
+    const temps: number[] = data?.hourly?.temperature_2m || [];
+    const rains: number[] = data?.hourly?.precipitation_probability || [];
+    const winds: number[] = data?.hourly?.wind_speed_10m || [];
+    const dirs: number[] = data?.hourly?.wind_direction_10m || [];
+    const isDays: number[] = data?.hourly?.is_day || [];
+
+    const curIsoHour = typeof cur.time === 'string' ? cur.time.slice(0, 13) : '';
+    let startIdx = times.findIndex((t) => t.startsWith(curIsoHour));
+    if (startIdx < 0) startIdx = 0;
+
+    let bestSlot: HourlySoaringSlot | null = null;
+    for (let i = startIdx; i < Math.min(times.length, startIdx + 18); i++) {
+      const timeLabel = times[i]?.split('T')[1]?.slice(0, 5) || '12:00';
+      const wKt = Math.round(winds[i] ?? windSpeed);
+      const wDeg = Math.round(dirs[i] ?? windDirDeg);
+      const rProb = Math.round(rains[i] ?? 0);
+      const dayFlag = (isDays[i] ?? 1) === 1;
+      const score = calculateHourlyLiftScore(wKt, wDeg, rProb, dayFlag);
+      const slot: HourlySoaringSlot = {
+        time: timeLabel,
+        tempC: Math.round(temps[i] ?? temp),
+        windSpeedKt: wKt,
+        windDirection: getCardinalDirection(wDeg),
+        rainProb: rProb,
+        liftScore: score,
+        isDay: dayFlag,
+      };
+      if (hourlySoaring.length < 6) {
+        hourlySoaring.push(slot);
+      }
+      if (dayFlag && (!bestSlot || slot.liftScore > bestSlot.liftScore)) {
+        bestSlot = slot;
+      }
+    }
+
+    if (bestSlot) {
+      const [bh] = bestSlot.time.split(':').map(Number);
+      const endHour = String((bh + 2) % 24).padStart(2, '0') + ':00';
+      peakSoaringWindow = `${bestSlot.time} – ${endHour} UK (${bestSlot.liftScore}% Lift • ${bestSlot.windDirection} ${bestSlot.windSpeedKt} kt)`;
+    }
+  } catch {}
 
   // Format timestamp in London time
   const now = new Date();
@@ -132,7 +208,11 @@ export async function fetchLiveBarburyWeather(): Promise<BarburySummitWeather> {
     soaringLiftRating,
     walkerAdvisory,
     lastUpdated: `${timeStr} UK • Live Met Sync (Open-Meteo)`,
+    sunriseTime,
     sunsetTime,
     goldenHourTime,
+    isAfterDark,
+    peakSoaringWindow,
+    hourlySoaring,
   };
 }

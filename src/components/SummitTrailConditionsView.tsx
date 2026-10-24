@@ -36,7 +36,11 @@ import {
   Coffee,
   Share2,
   Check,
-  Binoculars
+  Binoculars,
+  Volume2,
+  Moon,
+  Sun,
+  TrendingUp
 } from 'lucide-react';
 import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
@@ -135,6 +139,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [quickSpotCount, setQuickSpotCount] = useState<number>(1);
   const [quickSpotZone, setQuickSpotZone] = useState<string>('Hackpen Hill View');
   const [quickSpotNotes, setQuickSpotNotes] = useState<string>('');
+  const [dvrFlagToast, setDvrFlagToast] = useState<string | null>(null);
+  const [isBreezeActive, setIsBreezeActive] = useState<boolean>(tacticalAudio.isAmbientPlaying);
+  const [activeAudioCall, setActiveAudioCall] = useState<string | null>(null);
 
   // Device Camera (Webcam / Smartphone Camera) State
   const [isDeviceCamActive, setIsDeviceCamActive] = useState<boolean>(false);
@@ -430,6 +437,80 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     setShowQuickSpotModal(false);
     setQuickSpotNotes('');
   };
+
+  // Instant 1-Click "Bird on Cam Right Now!" DVR Marker Handler
+  const handleInstantDvrFlag = (zoneName: string, defaultSpecies: string) => {
+    tacticalAudio.playConfirmChime();
+    const now = new Date();
+    const ukTime = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    const speciesIdMap: Record<string, string> = {
+      'Red Kite': 'red-kite',
+      'Common Buzzard': 'common-buzzard',
+      'Common Kestrel': 'kestrel',
+      'Peregrine Falcon': 'peregrine-falcon',
+    };
+
+    if (onSaveSighting) {
+      const dvrSighting: SightingLog = {
+        id: `dvr-cam-${Date.now()}`,
+        timestamp: now.toISOString(),
+        date: now.toISOString().split('T')[0],
+        time: ukTime,
+        speciesId: speciesIdMap[defaultSpecies] || 'kestrel',
+        speciesName: defaultSpecies,
+        locationName: `Station Cam (${zoneName})`,
+        sectorId: (activeSectorId || 'ridgeway-wessex') as SectorId,
+        coordinates: [51.4835, -1.7895],
+        count: 1,
+        behavior: zoneName.includes('Perch') ? 'Perched on Post/Sarsen' : 'Escarpment Lift',
+        altitudeM: zoneName.includes('Perch') ? 5 : 40,
+        opticalGear: 'Station Cam Live DVR',
+        observerCallsign: currentCallsign,
+        observerRank: 'Verified Spotter',
+        notes: `Live DVR Timestamp Flagged on ${zoneName} at ${ukTime} UK.`,
+        confidence: 'High (80%)',
+        windDirection: weather.windDirection,
+        windSpeedMph: Math.round(weather.windSpeedKt * 1.15),
+        thermalStrength: weather.soaringLiftRating === 'EXCELLENT' ? 'Strong' : 'Moderate',
+        verificationStatus: 'Corroborated by Peers',
+        corroborations: [],
+        auditTrail: [
+          {
+            timestamp: now.toISOString(),
+            action: 'INITIAL_LOG',
+            actorCallsign: currentCallsign,
+            details: `1-Click Live DVR Marker (${zoneName})`,
+          },
+        ],
+      };
+      onSaveSighting(dvrSighting);
+    }
+
+    setDvrFlagToast(`DVR Marker saved for ${zoneName} (${ukTime} UK)! Viewers can now rewind to this exact moment.`);
+    setTimeout(() => setDvrFlagToast(null), 5000);
+  };
+
+  // Compute live DVR rewind offsets for sightings within the last 12 hours (YouTube DVR window)
+  const recentDvrMarkers = sightings
+    .map((s) => {
+      const ts = new Date(s.timestamp).getTime();
+      const diffMins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+      let rewindText = 'LIVE NOW';
+      if (diffMins >= 1 && diffMins < 60) {
+        rewindText = `-${diffMins}m`;
+      } else if (diffMins >= 60) {
+        const hrs = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        rewindText = `-${hrs}h ${String(mins).padStart(2, '0')}m`;
+      }
+      return {
+        ...s,
+        diffMins,
+        rewindText,
+      };
+    })
+    .filter((s) => !Number.isNaN(s.diffMins) && s.diffMins <= 720)
+    .slice(0, 3);
 
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-fadeIn">
@@ -888,9 +969,32 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           )}
         </div>
 
-        {/* Station Cam Rolling 4-View Reference Guide (Static, No Misleading Toggle Buttons) */}
+        {/* Smart After-Dark / Night Operations Notice (Auto-activates after UK sunset) */}
+        {activeVideoId === DEFAULT_CAMERA_VIDEO_ID && weather.isAfterDark && (
+          <div className="px-3.5 py-2.5 bg-indigo-950/60 border-t border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap text-xs font-mono-tactical">
+            <div className="flex items-center gap-2.5">
+              <Moon className="w-4 h-4 text-indigo-300 shrink-0" />
+              <div className="text-[11px] text-indigo-100 leading-snug">
+                <strong className="text-indigo-300">Night Operations on the Ridgeway:</strong> The Wiltshire camera is currently in after-dark mode (Next sunrise: <strong>{weather.sunriseTime || '07:35'} UK</strong>). Drag the red YouTube timeline bar backwards to watch today&apos;s daylight sightings!
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                setCustomVideoId(EAGLE_LIVE_VIDEO_ID);
+                setStreamMode('video');
+              }}
+              className="px-2.5 py-1 rounded-lg bg-indigo-500/25 hover:bg-indigo-500/40 border border-indigo-400/50 text-indigo-200 font-bold text-[10px] cursor-pointer transition-colors whitespace-nowrap"
+            >
+              ☀️ Switch to Daylight Eagle Cam (USA)
+            </button>
+          </div>
+        )}
+
+        {/* Station Cam Rolling 4-View Reference Guide + Live DVR Rewind Markers */}
         {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
-          <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-2 text-xs font-mono-tactical">
+          <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-3 text-xs font-mono-tactical">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Navigation className="w-3.5 h-3.5 text-amber-400" />
@@ -920,6 +1024,66 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   </p>
                 </div>
               ))}
+            </div>
+
+            {/* 1-Click "Bird on Cam Right Now!" Live DVR Timestamp Bar */}
+            <div className="pt-2 border-t border-neutral-800/90 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  <span className="text-neutral-100 font-bold text-[11px]">
+                    🦅 Spotted a Bird on Cam Right Now? Drop a Live DVR Rewind Marker:
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { label: '🦅 On Perch View', zone: 'Perch View', species: 'Common Kestrel' },
+                    { label: '🌾 On Field View', zone: 'Field View', species: 'Common Buzzard' },
+                    { label: '⛰️ Hackpen View', zone: 'Hackpen Hill View', species: 'Red Kite' },
+                    { label: '🏰 Barbury Fort', zone: 'Barbury Fort View', species: 'Red Kite' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.zone}
+                      type="button"
+                      onClick={() => handleInstantDvrFlag(btn.zone, btn.species)}
+                      className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 hover:text-white font-bold text-[10px] cursor-pointer transition-all shadow-sm"
+                      title={`Drop a live timestamp marker for ${btn.zone}`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {dvrFlagToast && (
+                <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-[11px] font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{dvrFlagToast}</span>
+                </div>
+              )}
+
+              {/* Recent DVR Rewind Markers (Last 12 Hours) */}
+              {recentDvrMarkers.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
+                  {recentDvrMarkers.map((marker) => (
+                    <div
+                      key={marker.id}
+                      className="px-2.5 py-1.5 rounded-lg bg-neutral-950 border border-neutral-800/90 flex items-center justify-between gap-2 text-[10px]"
+                    >
+                      <div className="truncate">
+                        <span className="text-amber-300 font-bold">{marker.speciesName}</span>
+                        <span className="text-neutral-400"> • {marker.locationName.replace('Station Cam ', '').replace('Barbury Cam ', '')}</span>
+                      </div>
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold shrink-0"
+                        title="Drag the red YouTube timeline bar back by this amount to watch the sighting"
+                      >
+                        ⏪ {marker.rewindText}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -1106,6 +1270,120 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             <div className="text-[10px] text-emerald-400 font-semibold">
               Sunset {weather.sunsetTime || '19:52'} • Golden Hr {weather.goldenHourTime || '18:55'}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2B. Hourly "Best Raptor Soaring Window" & Interactive Ridgeway Audio ID Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 font-mono-tactical text-xs">
+        {/* Left 7 Cols: 12-Hour Raptor Soaring & Thermal Window Forecast */}
+        <div className="lg:col-span-7 bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2 shadow-lg">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-neutral-200 font-bold text-[11px]">
+                RIDGEWAY RAPTOR SOARING FORECAST
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold">
+              Peak Window: {weather.peakSoaringWindow || '12:00 – 15:00 UK (88% Lift)'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-[10px]">
+            {(weather.hourlySoaring && weather.hourlySoaring.length > 0
+              ? weather.hourlySoaring
+              : [
+                  { time: '10:00', tempC: 12, windSpeedKt: 13, windDirection: 'SW', rainProb: 5, liftScore: 84, isDay: true },
+                  { time: '11:00', tempC: 13, windSpeedKt: 14, windDirection: 'SW', rainProb: 5, liftScore: 88, isDay: true },
+                  { time: '12:00', tempC: 14, windSpeedKt: 15, windDirection: 'WSW', rainProb: 0, liftScore: 92, isDay: true },
+                  { time: '13:00', tempC: 15, windSpeedKt: 16, windDirection: 'WSW', rainProb: 0, liftScore: 94, isDay: true },
+                  { time: '14:00', tempC: 15, windSpeedKt: 15, windDirection: 'WSW', rainProb: 10, liftScore: 89, isDay: true },
+                  { time: '15:00', tempC: 14, windSpeedKt: 14, windDirection: 'SW', rainProb: 10, liftScore: 82, isDay: true },
+                ]
+            ).map((slot) => (
+              <div
+                key={slot.time}
+                className="p-2 rounded-lg bg-neutral-900/80 border border-neutral-800/90 text-center space-y-0.5"
+              >
+                <div className="text-neutral-400 font-bold">{slot.time}</div>
+                <div
+                  className={`text-xs font-bold ${
+                    slot.liftScore >= 80
+                      ? 'text-emerald-400'
+                      : slot.liftScore >= 60
+                      ? 'text-amber-300'
+                      : 'text-neutral-400'
+                  }`}
+                >
+                  {slot.liftScore}% Lift
+                </div>
+                <div className="text-[9px] text-neutral-400">
+                  {slot.windDirection} {slot.windSpeedKt}kt
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right 5 Cols: Interactive Ridgeway Raptor Call & Downland Breeze Audio ID */}
+        <div className="lg:col-span-5 bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2 shadow-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-neutral-200 font-bold text-[11px]">
+                RAPTOR CALL ID &amp; DOWNLAND AUDIO
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.setMuted(false);
+                const playing = tacticalAudio.toggleDownlandBreeze();
+                setIsBreezeActive(playing);
+              }}
+              className={`px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer transition-colors ${
+                isBreezeActive
+                  ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                  : 'bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200'
+              }`}
+              title="Play gentle ambient Wiltshire downland breeze while watching the live camera"
+            >
+              {isBreezeActive ? '🌬️ Breeze: ON' : '🌬️ Downland Breeze'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px]">
+            {[
+              { id: 'red-kite', name: 'Red Kite', hint: 'Whistle' },
+              { id: 'buzzard', name: 'Buzzard', hint: 'Mew call' },
+              { id: 'kestrel', name: 'Kestrel', hint: 'Kik-kik' },
+              { id: 'peregrine', name: 'Peregrine', hint: 'Kak-kak' },
+              { id: 'barn-owl', name: 'Barn Owl', hint: 'Shriek' },
+            ].map((bird) => {
+              const isPlaying = activeAudioCall === bird.id;
+              return (
+                <button
+                  key={bird.id}
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.setMuted(false);
+                    tacticalAudio.playSpeciesCall(bird.id);
+                    setActiveAudioCall(bird.id);
+                    setTimeout(() => setActiveAudioCall(null), 1200);
+                  }}
+                  className={`p-1.5 rounded-lg border text-center cursor-pointer transition-all ${
+                    isPlaying
+                      ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold scale-[1.02]'
+                      : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-amber-500/40 hover:text-amber-300'
+                  }`}
+                  title={`Listen to ${bird.name} flight call (${bird.hint})`}
+                >
+                  <div className="font-bold truncate">🔊 {bird.name.split(' ').pop()}</div>
+                  <div className="text-[9px] text-neutral-400 truncate">{bird.hint}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

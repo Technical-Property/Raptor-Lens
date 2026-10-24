@@ -14,6 +14,16 @@ export interface PtzPreset {
   dwellSeconds: number;
 }
 
+export interface HourlySoaringSlot {
+  time: string;
+  tempC: number;
+  windSpeedKt: number;
+  windDirection: string;
+  rainProb: number;
+  liftScore: number;
+  isDay: boolean;
+}
+
 export interface BarburySummitWeather {
   temperatureC: number;
   windChillC: number;
@@ -29,8 +39,12 @@ export interface BarburySummitWeather {
   soaringLiftRating: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'LOW';
   walkerAdvisory: string;
   lastUpdated: string;
+  sunriseTime?: string;
   sunsetTime?: string;
   goldenHourTime?: string;
+  isAfterDark?: boolean;
+  peakSoaringWindow?: string;
+  hourlySoaring?: HourlySoaringSlot[];
 }
 
 export interface EducationalChallenge {
