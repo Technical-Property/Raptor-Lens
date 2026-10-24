@@ -280,17 +280,19 @@ export const ConfusionSolverModal: React.FC<ConfusionSolverModalProps> = ({
                 </svg>
               </div>
 
-              {/* Sound ID with Merlin */}
-              <a
-                href="https://merlin.allaboutbirds.org/"
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* Play Real Recorded Call */}
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.setMuted(false);
+                  tacticalAudio.playSpeciesCall(speciesA.id);
+                }}
                 className="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-neutral-950 hover:bg-neutral-850 flex items-center justify-center gap-2 font-mono-tactical text-xs text-amber-300 hover:text-amber-200 transition-colors cursor-pointer"
-                title={`Listen to verified ${speciesA.commonName} recordings via Merlin Bird ID (Cornell Lab)`}
+                title={`Play real recorded ${speciesA.commonName} call`}
               >
-                <span>Sound ID on Merlin ({speciesA.commonName})</span>
-                <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
-              </a>
+                <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>🔊 Play Real Call ({speciesA.commonName})</span>
+              </button>
 
               <div className="space-y-1.5 text-[11px]">
                 <div className="bg-neutral-950/80 p-2 rounded border border-neutral-800">
@@ -343,17 +345,19 @@ export const ConfusionSolverModal: React.FC<ConfusionSolverModalProps> = ({
                 </svg>
               </div>
 
-              {/* Sound ID with Merlin */}
-              <a
-                href="https://merlin.allaboutbirds.org/"
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* Play Real Recorded Call */}
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.setMuted(false);
+                  tacticalAudio.playSpeciesCall(speciesB.id);
+                }}
                 className="w-full py-2 px-3 rounded-lg border border-cyan-500/40 bg-neutral-950 hover:bg-neutral-850 flex items-center justify-center gap-2 font-mono-tactical text-xs text-cyan-300 hover:text-cyan-200 transition-colors cursor-pointer"
-                title={`Listen to verified ${speciesB.commonName} recordings via Merlin Bird ID (Cornell Lab)`}
+                title={`Play real recorded ${speciesB.commonName} call`}
               >
-                <span>Sound ID on Merlin ({speciesB.commonName})</span>
-                <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              </a>
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>🔊 Play Real Call ({speciesB.commonName})</span>
+              </button>
 
               <div className="space-y-1.5 text-[11px]">
                 <div className="bg-neutral-950/80 p-2 rounded border border-neutral-800">

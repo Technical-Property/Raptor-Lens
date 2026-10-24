@@ -386,17 +386,18 @@ export const SilhouetteIdentifier: React.FC<SilhouetteIdentifierProps> = ({
 
                     {/* Bottom Actions */}
                     <div className="flex items-center gap-2 pt-2 border-t border-neutral-800">
-                      <a
-                        href="https://merlin.allaboutbirds.org/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="py-1 px-2 rounded bg-neutral-850 hover:bg-neutral-800 text-neutral-300 hover:text-cyan-300 text-[11px] font-mono-tactical cursor-pointer transition-colors flex items-center gap-1 border border-neutral-750"
-                        title={`Sound ID for ${species.commonName} via Merlin Bird ID (Cornell Lab)`}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          tacticalAudio.setMuted(false);
+                          tacticalAudio.playSpeciesCall(species.id);
+                        }}
+                        className="py-1.5 px-2.5 rounded bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 text-[11px] font-mono-tactical font-bold cursor-pointer transition-colors flex items-center gap-1 border border-cyan-500/40"
+                        title={`Play real recorded ${species.commonName} flight call`}
                       >
-                        <span className="text-cyan-400 font-bold text-[10px]">Merlin</span>
-                        <ExternalLink className="w-3 h-3 text-neutral-400" />
-                      </a>
+                        <span>🔊 Call</span>
+                      </button>
                       <button
                         onClick={() => {
                           tacticalAudio.playRadarPing(950);

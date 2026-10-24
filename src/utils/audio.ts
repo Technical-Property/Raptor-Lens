@@ -1,9 +1,31 @@
-// Safe Web Audio API sound generator for tactical telemetry cues & downland wind ambiance
+// Web Audio API & real ornithological field recording player (Xeno-canto / Wikimedia Commons)
+
+const SPECIES_AUDIO_MAP: Record<string, string> = {
+  'red-kite': '/audio/red-kite.mp3',
+  'buzzard': '/audio/buzzard.mp3',
+  'common-buzzard': '/audio/buzzard.mp3',
+  'kestrel': '/audio/kestrel.mp3',
+  'common-kestrel': '/audio/kestrel.mp3',
+  'peregrine': '/audio/peregrine.mp3',
+  'peregrine-falcon': '/audio/peregrine.mp3',
+  'barn-owl': '/audio/barn-owl.mp3',
+  'sparrowhawk': '/audio/sparrowhawk.mp3',
+  'eurasian-sparrowhawk': '/audio/sparrowhawk.mp3',
+  'hen-harrier': '/audio/hen-harrier.mp3',
+  'marsh-harrier': '/audio/hen-harrier.mp3',
+  'hobby': '/audio/hobby.mp3',
+  'eurasian-hobby': '/audio/hobby.mp3',
+  'osprey': '/audio/osprey.mp3',
+  'short-eared-owl': '/audio/short-eared-owl.mp3',
+  'merlin': '/audio/merlin.mp3',
+};
 
 class TacticalAudio {
   private ctx: AudioContext | null = null;
   private ambientGain: GainNode | null = null;
   private ambientNoiseSource: AudioBufferSourceNode | null = null;
+  private currentCallAudio: HTMLAudioElement | null = null;
+  private currentCallSpeciesId: string | null = null;
   public isAmbientPlaying: boolean = false;
   public isMuted: boolean = false;
   private muteListeners: Array<(muted: boolean) => void> = [];
@@ -32,8 +54,11 @@ class TacticalAudio {
 
   public setMuted(muted: boolean): boolean {
     this.isMuted = muted;
-    if (this.isMuted && this.isAmbientPlaying) {
-      this.stopDownlandBreeze();
+    if (this.isMuted) {
+      if (this.isAmbientPlaying) {
+        this.stopDownlandBreeze();
+      }
+      this.stopSpeciesCall();
     }
     this.notifyMute();
     return this.isMuted;
@@ -41,6 +66,17 @@ class TacticalAudio {
 
   public toggleMuted(): boolean {
     return this.setMuted(!this.isMuted);
+  }
+
+  public stopSpeciesCall() {
+    if (this.currentCallAudio) {
+      try {
+        this.currentCallAudio.pause();
+        this.currentCallAudio.currentTime = 0;
+      } catch {}
+      this.currentCallAudio = null;
+      this.currentCallSpeciesId = null;
+    }
   }
 
   private stopDownlandBreeze() {
@@ -194,263 +230,58 @@ class TacticalAudio {
     }
   }
 
-  // Realistic synthesized bird-of-prey flight calls (Web Audio API)
-  public playSpeciesCall(speciesId: string) {
-    if (this.isMuted) return;
-    try {
-      this.initCtx();
-      if (!this.ctx) return;
-      const t = this.ctx.currentTime;
+  // Authentic recorded ornithological flight calls (Xeno-canto / Wikimedia Commons)
+  // Returns true if playback started, false if toggled off or muted
+  public playSpeciesCall(speciesId: string, onEnded?: () => void): boolean {
+    if (this.isMuted) return false;
 
-      switch (speciesId) {
-        case 'buzzard': {
-          // Common Buzzard: Characteristic prolonged, cat-like descending mew ("pee-yooow")
-          const osc = this.ctx.createOscillator();
-          const vibrato = this.ctx.createOscillator();
-          const vibratoGain = this.ctx.createGain();
-          const gain = this.ctx.createGain();
+    const normalizedKey = speciesId.toLowerCase().trim();
+    const audioSrc = SPECIES_AUDIO_MAP[normalizedKey];
 
-          osc.type = 'triangle';
-          vibrato.frequency.setValueAtTime(6, t);
-          vibratoGain.gain.setValueAtTime(35, t);
-
-          vibrato.connect(osc.frequency);
-          osc.frequency.setValueAtTime(2450, t);
-          osc.frequency.exponentialRampToValueAtTime(1450, t + 1.1);
-
-          gain.gain.setValueAtTime(0.001, t);
-          gain.gain.linearRampToValueAtTime(0.12, t + 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 1.25);
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-
-          vibrato.start(t);
-          osc.start(t);
-          vibrato.stop(t + 1.25);
-          osc.stop(t + 1.25);
-          break;
-        }
-
-        case 'red-kite': {
-          // Red Kite: High musical piping whistle with trailing staccato trill ("wheee-oo, chee-chee")
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-
-          osc.type = 'sine';
-          // Initial high swoop
-          osc.frequency.setValueAtTime(2200, t);
-          osc.frequency.exponentialRampToValueAtTime(2850, t + 0.3);
-          osc.frequency.exponentialRampToValueAtTime(2000, t + 0.6);
-
-          gain.gain.setValueAtTime(0.01, t);
-          gain.gain.linearRampToValueAtTime(0.11, t + 0.1);
-          gain.gain.exponentialRampToValueAtTime(0.02, t + 0.6);
-
-          // Staccato chitters
-          for (let i = 0; i < 3; i++) {
-            const pulseT = t + 0.65 + i * 0.12;
-            osc.frequency.setValueAtTime(2700, pulseT);
-            osc.frequency.exponentialRampToValueAtTime(2200, pulseT + 0.08);
-            gain.gain.setValueAtTime(0.1, pulseT);
-            gain.gain.exponentialRampToValueAtTime(0.005, pulseT + 0.09);
-          }
-
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-
-          osc.start(t);
-          osc.stop(t + 1.15);
-          break;
-        }
-
-        case 'kestrel': {
-          // Common Kestrel: Piercing, rapid, staccato alarm / hover call ("kik-kik-kik-kik")
-          const count = 5;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.11;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(3100, pt);
-            osc.frequency.exponentialRampToValueAtTime(2400, pt + 0.06);
-
-            gain.gain.setValueAtTime(0.1, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.07);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.075);
-          }
-          break;
-        }
-
-        case 'peregrine': {
-          // Peregrine Falcon: Harsh, abrasive barking chatter ("kak-kak-kak-kak")
-          const count = 6;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.12;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(1750, pt);
-            osc.frequency.exponentialRampToValueAtTime(1250, pt + 0.07);
-
-            gain.gain.setValueAtTime(0.09, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.08);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.085);
-          }
-          break;
-        }
-
-        case 'sparrowhawk': {
-          // Eurasian Sparrowhawk: Rapid excited, high shrill chatter ("kew-kew-kew")
-          const count = 6;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.09;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(2800, pt);
-            osc.frequency.exponentialRampToValueAtTime(2100, pt + 0.05);
-
-            gain.gain.setValueAtTime(0.08, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.06);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.065);
-          }
-          break;
-        }
-
-        case 'hen-harrier':
-        case 'marsh-harrier': {
-          // Harrier: High nasal chatter ("ke-ke-ke")
-          const count = 5;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.13;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(2200, pt);
-            osc.frequency.exponentialRampToValueAtTime(1800, pt + 0.08);
-
-            gain.gain.setValueAtTime(0.09, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.09);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.095);
-          }
-          break;
-        }
-
-        case 'hobby': {
-          // Eurasian Hobby: Clear, rapid, flute-like falcon falconets ("kew-kew-kew-kew")
-          const count = 5;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.08;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(3200, pt);
-            osc.frequency.exponentialRampToValueAtTime(2600, pt + 0.05);
-
-            gain.gain.setValueAtTime(0.09, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.055);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.06);
-          }
-          break;
-        }
-
-        case 'osprey': {
-          // Osprey: High clear musical whistling chirps ("kyeep-kyeep-kyeep")
-          const count = 4;
-          for (let i = 0; i < count; i++) {
-            const pt = t + i * 0.16;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1800, pt);
-            osc.frequency.exponentialRampToValueAtTime(2600, pt + 0.06);
-            osc.frequency.exponentialRampToValueAtTime(1900, pt + 0.11);
-
-            gain.gain.setValueAtTime(0.1, pt);
-            gain.gain.exponentialRampToValueAtTime(0.001, pt + 0.12);
-
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-
-            osc.start(pt);
-            osc.stop(pt + 0.13);
-          }
-          break;
-        }
-
-        case 'barn-owl': {
-          // Barn Owl: Eerie raspy wheezing shriek (filtered noise)
-          const bufferSize = this.ctx.sampleRate * 0.8;
-          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-          }
-
-          const noise = this.ctx.createBufferSource();
-          noise.buffer = buffer;
-
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(2200, t);
-          filter.frequency.exponentialRampToValueAtTime(1600, t + 0.7);
-          filter.Q.setValueAtTime(4.0, t);
-
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.001, t);
-          gain.gain.linearRampToValueAtTime(0.14, t + 0.1);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
-
-          noise.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.ctx.destination);
-
-          noise.start(t);
-          noise.stop(t + 0.8);
-          break;
-        }
-
-        default: {
-          // General raptor whistle chirp
-          this.playRadarPing(1100);
-          break;
-        }
-      }
-    } catch {
-      // Audio context may require user activation
+    // If the exact same species call is currently playing, toggle it off
+    if (this.currentCallAudio && !this.currentCallAudio.paused && this.currentCallSpeciesId === normalizedKey) {
+      this.stopSpeciesCall();
+      onEnded?.();
+      return false;
     }
+
+    // Stop any previously playing bird call
+    this.stopSpeciesCall();
+
+    if (audioSrc) {
+      try {
+        const audio = new Audio(audioSrc);
+        audio.volume = 0.9;
+        this.currentCallAudio = audio;
+        this.currentCallSpeciesId = normalizedKey;
+
+        const handleFinish = () => {
+          if (this.currentCallAudio === audio) {
+            this.currentCallAudio = null;
+            this.currentCallSpeciesId = null;
+          }
+          onEnded?.();
+        };
+
+        audio.addEventListener('ended', handleFinish, { once: true });
+        audio.addEventListener('error', () => {
+          handleFinish();
+        }, { once: true });
+
+        audio.play().catch(() => {
+          handleFinish();
+        });
+        return true;
+      } catch {
+        onEnded?.();
+        return false;
+      }
+    }
+
+    // Fallback radar ping if unknown species ID
+    this.playRadarPing(1100);
+    onEnded?.();
+    return false;
   }
 }
 

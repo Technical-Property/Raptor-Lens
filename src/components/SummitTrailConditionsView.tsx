@@ -1355,11 +1355,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px]">
             {[
-              { id: 'red-kite', name: 'Red Kite', hint: 'Whistle' },
-              { id: 'buzzard', name: 'Buzzard', hint: 'Mew call' },
-              { id: 'kestrel', name: 'Kestrel', hint: 'Kik-kik' },
-              { id: 'peregrine', name: 'Peregrine', hint: 'Kak-kak' },
-              { id: 'barn-owl', name: 'Barn Owl', hint: 'Shriek' },
+              { id: 'red-kite', name: 'Red Kite', hint: 'Real Call' },
+              { id: 'buzzard', name: 'Buzzard', hint: 'Real Call' },
+              { id: 'kestrel', name: 'Kestrel', hint: 'Real Call' },
+              { id: 'peregrine', name: 'Peregrine', hint: 'Real Call' },
+              { id: 'barn-owl', name: 'Barn Owl', hint: 'Real Call' },
             ].map((bird) => {
               const isPlaying = activeAudioCall === bird.id;
               return (
@@ -1368,19 +1368,25 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   type="button"
                   onClick={() => {
                     tacticalAudio.setMuted(false);
-                    tacticalAudio.playSpeciesCall(bird.id);
-                    setActiveAudioCall(bird.id);
-                    setTimeout(() => setActiveAudioCall(null), 1200);
+                    const started = tacticalAudio.playSpeciesCall(bird.id, () => {
+                      setActiveAudioCall((prev) => (prev === bird.id ? null : prev));
+                    });
+                    setActiveAudioCall(started ? bird.id : null);
                   }}
                   className={`p-1.5 rounded-lg border text-center cursor-pointer transition-all ${
                     isPlaying
-                      ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold scale-[1.02]'
+                      ? 'bg-amber-500/25 border-amber-400 text-amber-200 font-bold scale-[1.02] ring-1 ring-amber-400/50'
                       : 'bg-neutral-900/80 border-neutral-800 text-neutral-300 hover:border-amber-500/40 hover:text-amber-300'
                   }`}
-                  title={`Listen to ${bird.name} flight call (${bird.hint})`}
+                  title={`Play real recorded ${bird.name} call (Click again to stop)`}
                 >
-                  <div className="font-bold truncate">🔊 {bird.name.split(' ').pop()}</div>
-                  <div className="text-[9px] text-neutral-400 truncate">{bird.hint}</div>
+                  <div className="font-bold truncate">
+                    {isPlaying ? '⏹️ ' : '🔊 '}
+                    {bird.name.split(' ').pop()}
+                  </div>
+                  <div className="text-[9px] text-neutral-400 truncate">
+                    {isPlaying ? 'Playing...' : bird.hint}
+                  </div>
                 </button>
               );
             })}

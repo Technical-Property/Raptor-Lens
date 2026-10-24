@@ -16,7 +16,10 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
 }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
+  const [isPlayingCall, setIsPlayingCall] = React.useState(false);
+
   React.useEffect(() => {
+    setIsPlayingCall(false);
     if (species) {
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
@@ -24,6 +27,7 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
+        tacticalAudio.stopSpeciesCall();
         document.body.style.overflow = prevOverflow;
       };
     }
@@ -146,22 +150,41 @@ export const SpeciesDetailModal: React.FC<SpeciesDetailModalProps> = ({
               <span className="text-cyan-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <Volume2 className="w-3.5 h-3.5" /> Call &amp; Vocalisations
               </span>
-              <a
-                href="https://merlin.allaboutbirds.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 text-[11px] font-mono-tactical font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                title="Identify calls and listen to verified field audio recordings on Merlin Bird ID (Cornell Lab)"
-              >
-                <span>Sound ID on Merlin</span>
-                <ExternalLink className="w-3 h-3 text-cyan-400" />
-              </a>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.setMuted(false);
+                    const started = tacticalAudio.playSpeciesCall(species.id, () => {
+                      setIsPlayingCall(false);
+                    });
+                    setIsPlayingCall(started);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-mono-tactical font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm ${
+                    isPlayingCall
+                      ? 'bg-amber-500/25 border-amber-400 text-amber-200'
+                      : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300'
+                  }`}
+                >
+                  <span>{isPlayingCall ? '⏹️ Stop Recording' : '🔊 Play Real Call'}</span>
+                </button>
+                <a
+                  href="https://merlin.allaboutbirds.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 text-[11px] font-mono-tactical font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  title="Identify calls and listen to verified field audio recordings on Merlin Bird ID (Cornell Lab)"
+                >
+                  <span>Merlin ID</span>
+                  <ExternalLink className="w-3 h-3 text-cyan-400" />
+                </a>
+              </div>
             </div>
             <p className="text-neutral-300 font-sans text-xs italic">
               "{species.callDescription}"
             </p>
             <p className="text-[10px] text-neutral-500 font-sans">
-              For real-world field sound recognition, record or compare this flight call with Cornell Lab's <strong>Merlin Bird ID</strong>.
+              Authentic ornithological field recording (Xeno-canto / Wikimedia Commons). You can also match live calls in the field with Cornell Lab's <strong>Merlin Bird ID</strong>.
             </p>
           </div>
 
