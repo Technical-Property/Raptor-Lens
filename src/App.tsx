@@ -46,9 +46,16 @@ import { trackEvent } from './utils/analytics';
 import { getYouTubeChannelUrl, DEFAULT_CAMERA_VIDEO_ID } from './utils/youtube';
 import { 
   seedSightingsIfEmpty, 
+  seedCommunityIfEmpty,
   subscribeToSightings, 
   saveSightingToFirestore,
-  addCorroborationToFirestore 
+  addCorroborationToFirestore,
+  subscribeToObservers,
+  saveObserverToFirestore,
+  subscribeToSkywatches,
+  saveSkywatchToFirestore,
+  subscribeToDiscussions,
+  saveDiscussionToFirestore
 } from './services/sightingsFirestore';
 import { validateFirestoreConnection } from './services/firebase';
 
@@ -216,18 +223,22 @@ export default function App() {
 
   // Initialize Firestore connection and real-time subscription
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    let unsubscribeSightings: (() => void) | undefined;
+    let unsubscribeObservers: (() => void) | undefined;
+    let unsubscribeSkywatches: (() => void) | undefined;
+    let unsubscribeDiscussions: (() => void) | undefined;
 
     async function initFirestore() {
       const ok = await validateFirestoreConnection();
       setIsFirestoreConnected(ok);
       if (ok) {
-        // Seed initial sightings if empty so Firestore is immediately populated
+        // Seed initial sightings and community records if empty so Firestore is immediately populated
         await seedSightingsIfEmpty();
+        await seedCommunityIfEmpty();
       }
 
       // Realtime listener for sightings
-      unsubscribe = subscribeToSightings((incoming) => {
+      unsubscribeSightings = subscribeToSightings((incoming) => {
         setSightings(incoming.map((s) => {
           const rawLat = (s.coordinates && Array.isArray(s.coordinates) && s.coordinates.length >= 2) ? Number(s.coordinates[0]) : NaN;
           const rawLng = (s.coordinates && Array.isArray(s.coordinates) && s.coordinates.length >= 2) ? Number(s.coordinates[1]) : NaN;
@@ -256,12 +267,30 @@ export default function App() {
           };
         }));
       }, INITIAL_SIGHTINGS);
+
+      // Realtime listener for community observers
+      unsubscribeObservers = subscribeToObservers((incoming) => {
+        setObservers(incoming);
+      }, INITIAL_OBSERVERS);
+
+      // Realtime listener for group skywatches
+      unsubscribeSkywatches = subscribeToSkywatches((incoming) => {
+        setSkywatches(incoming);
+      }, INITIAL_SKYWATCHES);
+
+      // Realtime listener for community forum discussions
+      unsubscribeDiscussions = subscribeToDiscussions((incoming) => {
+        setDiscussions(incoming);
+      }, INITIAL_DISCUSSIONS);
     }
 
     initFirestore();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeSightings) unsubscribeSightings();
+      if (unsubscribeObservers) unsubscribeObservers();
+      if (unsubscribeSkywatches) unsubscribeSkywatches();
+      if (unsubscribeDiscussions) unsubscribeDiscussions();
     };
   }, []);
 
@@ -527,11 +556,13 @@ export default function App() {
               : `✓ Joined skywatch: ${w.title}! See you on the Ridgeway.`
           );
 
-          return {
+          const updated: GroupSkywatch = {
             ...w,
             attendees: newAttendees,
             isJoined: !alreadyJoined,
           };
+          saveSkywatchToFirestore(updated);
+          return updated;
         }
         return w;
       })
@@ -540,11 +571,13 @@ export default function App() {
 
   const handleCreateSkywatch = (newWatch: GroupSkywatch) => {
     setSkywatches((prev) => [newWatch, ...prev]);
+    saveSkywatchToFirestore(newWatch);
     showToast(`✓ Group Skywatch scheduled: ${newWatch.title}`);
   };
 
   const handleAddDiscussion = (newDisc: CommunityDiscussion) => {
     setDiscussions((prev) => [newDisc, ...prev]);
+    saveDiscussionToFirestore(newDisc);
     showToast(`✓ Question broadcast to Wessex observer network!`);
   };
 
@@ -552,7 +585,7 @@ export default function App() {
     setDiscussions((prev) =>
       prev.map((d) => {
         if (d.id === discId) {
-          return {
+          const updated: CommunityDiscussion = {
             ...d,
             replies: [
               ...d.replies,
@@ -566,6 +599,8 @@ export default function App() {
               },
             ],
           };
+          saveDiscussionToFirestore(updated);
+          return updated;
         }
         return d;
       })
@@ -578,11 +613,13 @@ export default function App() {
       prev.map((d) => {
         if (d.id === discId) {
           const nextUpvoted = !d.hasUpvoted;
-          return {
+          const updated: CommunityDiscussion = {
             ...d,
             upvotes: nextUpvoted ? d.upvotes + 1 : Math.max(0, d.upvotes - 1),
             hasUpvoted: nextUpvoted,
           };
+          saveDiscussionToFirestore(updated);
+          return updated;
         }
         return d;
       })
@@ -623,12 +660,28 @@ export default function App() {
       }
       return [newProfile, ...prev];
     });
+    saveObserverToFirestore(newProfile);
     trackEvent('observer_registered', `New Observer Registered: ${newProfile.callsign} (${newProfile.fullName})`, {
       callsign: newProfile.callsign,
       experienceLevel: newProfile.experienceLevel,
       homeHotspot: newProfile.homeHotspot,
     });
     showToast(`✓ Observer Credentials Verified: Welcome ${newProfile.callsign}!`);
+  };
+
+  const handleResetObserverPassword = (updatedProfile: ObserverProfile) => {
+    setCurrentCallsign(updatedProfile.callsign);
+    setObservers((prev) => {
+      const idx = prev.findIndex((o) => o.id === updatedProfile.id || o.callsign === updatedProfile.callsign);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updatedProfile;
+        return next;
+      }
+      return [updatedProfile, ...prev];
+    });
+    saveObserverToFirestore(updatedProfile);
+    showToast(`✓ Password updated and synced for ${updatedProfile.callsign}`);
   };
 
   // Observer Authentication & Account Handlers
@@ -1610,6 +1663,9 @@ export default function App() {
           onLoginCustomCallsign={(callsign, homeHotspot) => {
             handleLoginCustomCallsign(callsign, homeHotspot);
             setIsLoginModalOpen(false);
+          }}
+          onResetObserverPassword={(updatedProfile) => {
+            handleResetObserverPassword(updatedProfile);
           }}
           onLogoutToGuest={() => {
             handleLogoutToGuest();

@@ -6,14 +6,13 @@ import {
   UserCheck, 
   LogIn, 
   LogOut, 
-  Award, 
   Lock, 
   KeyRound, 
-  Compass, 
   CheckCircle2, 
-  Camera, 
   UserPlus,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  HelpCircle
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
 
@@ -24,6 +23,7 @@ interface LoginModalProps {
   currentCallsign: string;
   onSelectObserver: (profile: ObserverProfile) => void;
   onLoginCustomCallsign: (callsign: string, homeHotspot?: string) => void;
+  onResetObserverPassword?: (updatedProfile: ObserverProfile) => void;
   onLogoutToGuest: () => void;
   onOpenRegistration: () => void;
 }
@@ -35,14 +35,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   currentCallsign,
   onSelectObserver,
   onLoginCustomCallsign,
+  onResetObserverPassword,
   onLogoutToGuest,
   onOpenRegistration,
 }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'custom'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'custom' | 'reset'>('roster');
   const [callsignInput, setCallsignInput] = useState('');
   const [passcodeInput, setPasscodeInput] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Password Reset / Recovery states
+  const [resetCallsign, setResetCallsign] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetChallengeAnswer, setResetChallengeAnswer] = useState('');
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [showNewPasscode, setShowNewPasscode] = useState(false);
+
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -64,15 +75,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const handleCustomLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCallsign = callsignInput.trim().toUpperCase();
-    if (!cleanCallsign) {
-      setErrorMsg('Please enter a valid observer callsign or ID.');
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    const cleanInput = callsignInput.trim();
+    if (!cleanInput) {
+      setErrorMsg('Please enter your observer callsign or registered email.');
       return;
     }
 
-    // Check if observer exists in roster
-    const existing = observers.find((o) => o.callsign.toUpperCase() === cleanCallsign);
+    // Match by Callsign OR by Contact Email
+    const existing = observers.find(
+      (o) =>
+        o.callsign.toUpperCase() === cleanInput.toUpperCase() ||
+        (o.contactEmail && o.contactEmail.toLowerCase() === cleanInput.toLowerCase())
+    );
+
     if (existing) {
+      // If observer has a password set, verify it
+      if (existing.passcode && existing.passcode.trim() !== '') {
+        if (passcodeInput.trim() !== existing.passcode.trim()) {
+          setErrorMsg(
+            `Incorrect password/PIN for ${existing.callsign}. Click "Forgot or Change Password?" below to reset it.`
+          );
+          return;
+        }
+      } else if (passcodeInput.trim() !== '' && onResetObserverPassword) {
+        // Observer didn't have a password yet, save the newly entered password to their profile
+        const updated = { ...existing, passcode: passcodeInput.trim() };
+        onResetObserverPassword(updated);
+      }
+
       tacticalAudio.playConfirmChime();
       onSelectObserver(existing);
       onClose();
@@ -81,11 +113,86 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     // If new callsign entered with passcode
     tacticalAudio.playConfirmChime();
-    onLoginCustomCallsign(cleanCallsign, 'Barbury Castle Country Park');
+    onLoginCustomCallsign(cleanInput.toUpperCase(), 'Barbury Castle Country Park');
     onClose();
   };
 
+  const handlePasswordResetSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    const targetCallsign = resetCallsign.trim().toUpperCase();
+    if (!targetCallsign) {
+      setErrorMsg('Please enter or select the Observer Callsign you want to reset.');
+      return;
+    }
+
+    const targetObserver = observers.find(
+      (o) =>
+        o.callsign.toUpperCase() === targetCallsign ||
+        (o.contactEmail && o.contactEmail.toLowerCase() === resetCallsign.trim().toLowerCase())
+    );
+
+    if (!targetObserver) {
+      setErrorMsg(`No observer found with callsign "${targetCallsign}". You can register a new profile below.`);
+      return;
+    }
+
+    // Verification: Check either matching registered email OR correct field security challenge
+    const emailMatches =
+      targetObserver.contactEmail &&
+      resetEmail.trim() !== '' &&
+      targetObserver.contactEmail.toLowerCase() === resetEmail.trim().toLowerCase();
+
+    const challengeMatches = resetChallengeAnswer === 'Red Kite';
+
+    if (!emailMatches && !challengeMatches) {
+      setErrorMsg(
+        'Verification required: Please either enter your matching registered email address OR select the correct answer to the Wessex Raptor security question below.'
+      );
+      return;
+    }
+
+    if (!newPasscode.trim() || newPasscode.trim().length < 4) {
+      setErrorMsg('Please enter a new password or PIN (at least 4 characters).');
+      return;
+    }
+
+    if (newPasscode.trim() !== confirmPasscode.trim()) {
+      setErrorMsg('New password and confirmation do not match.');
+      return;
+    }
+
+    const updatedProfile: ObserverProfile = {
+      ...targetObserver,
+      passcode: newPasscode.trim(),
+      contactEmail: resetEmail.trim() || targetObserver.contactEmail,
+    };
+
+    tacticalAudio.playConfirmChime();
+    if (onResetObserverPassword) {
+      onResetObserverPassword(updatedProfile);
+    } else {
+      onSelectObserver(updatedProfile);
+    }
+
+    setSuccessMsg(`Password updated for ${updatedProfile.callsign}! Signing you in...`);
+    setTimeout(() => {
+      onSelectObserver(updatedProfile);
+      onClose();
+    }, 900);
+  };
+
   const handleSelectPredefined = (obs: ObserverProfile) => {
+    if (obs.passcode && obs.passcode.trim() !== '' && obs.callsign !== currentCallsign) {
+      // Prompt for their password in the Callsign & Passcode tab
+      setCallsignInput(obs.callsign);
+      setPasscodeInput('');
+      setActiveTab('custom');
+      setErrorMsg(`Please enter your password/PIN for ${obs.callsign} (or click "Forgot or Change Password?").`);
+      return;
+    }
     tacticalAudio.playConfirmChime();
     onSelectObserver(obs);
     onClose();
@@ -113,7 +220,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="text-[10px] uppercase tracking-wider text-amber-400 font-bold">
-                  OBSERVER AUTHENTICATION
+                  OBSERVER AUTHENTICATION &amp; RECOVERY
                 </span>
               </div>
               <h3 className="font-display-tactical text-lg sm:text-xl font-bold text-neutral-100">
@@ -168,15 +275,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               tacticalAudio.playRadarPing(880);
               setActiveTab('roster');
               setErrorMsg(null);
+              setSuccessMsg(null);
             }}
-            className={`flex-1 py-3 px-4 text-center font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 px-2 sm:px-3 text-center font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'roster'
                 ? 'text-amber-400 border-b-2 border-amber-500 bg-neutral-900/70'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <UserCheck className="w-4 h-4" />
-            <span>Select Certified Observer</span>
+            <UserCheck className="w-4 h-4 shrink-0" />
+            <span>Select Observer</span>
           </button>
 
           <button
@@ -184,15 +292,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               tacticalAudio.playRadarPing(880);
               setActiveTab('custom');
               setErrorMsg(null);
+              setSuccessMsg(null);
             }}
-            className={`flex-1 py-3 px-4 text-center font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 py-3 px-2 sm:px-3 text-center font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'custom'
                 ? 'text-amber-400 border-b-2 border-amber-500 bg-neutral-900/70'
                 : 'text-neutral-400 hover:text-neutral-200'
             }`}
           >
-            <KeyRound className="w-4 h-4" />
-            <span>Callsign & Passcode</span>
+            <KeyRound className="w-4 h-4 shrink-0" />
+            <span>Sign In</span>
+          </button>
+
+          <button
+            onClick={() => {
+              tacticalAudio.playRadarPing(880);
+              if (callsignInput && !resetCallsign) {
+                setResetCallsign(callsignInput.toUpperCase());
+              } else if (currentCallsign !== 'GUEST-SCOUT' && !resetCallsign) {
+                setResetCallsign(currentCallsign);
+              }
+              setActiveTab('reset');
+              setErrorMsg(null);
+              setSuccessMsg(null);
+            }}
+            className={`flex-1 py-3 px-2 sm:px-3 text-center font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'reset'
+                ? 'text-amber-400 border-b-2 border-amber-500 bg-neutral-900/70'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+            <span>Reset Password</span>
           </button>
         </div>
 
@@ -200,7 +331,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {activeTab === 'roster' && (
           <div className="p-4 sm:p-5 space-y-3">
             <p className="text-[11px] text-neutral-400 mb-2">
-              Select your registered observer profile to sign in and immediately stamp all field sightings with your verified credentials:
+              Select your registered observer profile to sign in and stamp all field sightings with your verified credentials:
             </p>
 
             <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
@@ -226,6 +357,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                           {obs.isHumanVerified && (
                             <span className="flex items-center gap-0.5 text-[9px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/40">
                               <ShieldCheck className="w-2.5 h-2.5" /> Verified
+                            </span>
+                          )}
+                          {obs.passcode && (
+                            <span className="flex items-center gap-0.5 text-[9px] text-amber-300 bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-500/30">
+                              <Lock className="w-2.5 h-2.5" /> PIN Protected
                             </span>
                           )}
                           {isActive && (
@@ -266,28 +402,53 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         {activeTab === 'custom' && (
           <form onSubmit={handleCustomLoginSubmit} className="p-4 sm:p-5 space-y-4 text-xs">
             {errorMsg && (
-              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 rounded-xl text-xs">
-                {errorMsg}
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 rounded-xl text-xs space-y-2">
+                <div>{errorMsg}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetCallsign(callsignInput.trim().toUpperCase());
+                    setErrorMsg(null);
+                    setActiveTab('reset');
+                  }}
+                  className="text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer inline-flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" /> Reset or Change Password Now →
+                </button>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-neutral-300 font-bold block">OBSERVER CALLSIGN OR REGISTRATION ID</label>
+              <label className="text-neutral-300 font-bold block">OBSERVER CALLSIGN OR REGISTERED EMAIL</label>
               <input
                 type="text"
-                placeholder="e.g. BARBURY-HAWK-7 or DOWNS-SCOUT"
+                placeholder="e.g. BARBURY-HAWK-7 or observer@email.com"
                 value={callsignInput}
                 onChange={(e) => setCallsignInput(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-neutral-100 font-mono uppercase focus:outline-none focus:border-amber-500"
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-neutral-100 font-mono focus:outline-none focus:border-amber-500"
                 required
               />
               <span className="text-[10px] text-neutral-400">
-                Enter your assigned Wessex tactical callsign.
+                Enter your Wessex tactical callsign or the email address you registered with.
               </span>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-neutral-300 font-bold block">FIELD SECURITY PIN / PASSCODE</label>
+              <div className="flex items-center justify-between">
+                <label className="text-neutral-300 font-bold">PASSWORD / FIELD SECURITY PIN</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(850);
+                    if (callsignInput) setResetCallsign(callsignInput.trim().toUpperCase());
+                    setErrorMsg(null);
+                    setActiveTab('reset');
+                  }}
+                  className="text-[11px] text-amber-400 hover:text-amber-300 font-bold underline underline-offset-2 cursor-pointer"
+                >
+                  Forgot or Change Password?
+                </button>
+              </div>
               <input
                 type="password"
                 placeholder="••••••"
@@ -296,7 +457,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-neutral-100 font-mono focus:outline-none focus:border-amber-500"
               />
               <span className="text-[10px] text-neutral-400">
-                Field PIN protects your logbook and observer credentials.
+                Protects your observer logbook and credentials across devices.
               </span>
             </div>
 
@@ -317,6 +478,143 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold font-display-tactical text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 transition-all"
             >
               <LogIn className="w-4 h-4" /> Sign In to Field Net
+            </button>
+          </form>
+        )}
+
+        {/* Tab 3: Forgot / Change Password Recovery */}
+        {activeTab === 'reset' && (
+          <form onSubmit={handlePasswordResetSubmit} className="p-4 sm:p-5 space-y-4 text-xs">
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-neutral-200 leading-relaxed font-sans text-xs">
+              <strong className="text-amber-300 block mb-0.5 font-mono-tactical">
+                Instant Self-Service Password Recovery
+              </strong>
+              Forgot your password or want to set a new one? Enter your Callsign below, verify using your registered email <em>or</em> the Wessex Raptor security question, and choose a new password.
+            </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-rose-950/60 border border-rose-800 text-rose-300 rounded-xl text-xs">
+                {errorMsg}
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="p-3 bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 rounded-xl text-xs flex items-center gap-2 font-bold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-neutral-300 font-bold block">1. YOUR OBSERVER CALLSIGN</label>
+              <input
+                type="text"
+                list="registered-callsigns-list"
+                placeholder="e.g. WESSEX-SCOUT-07"
+                value={resetCallsign}
+                onChange={(e) => setResetCallsign(e.target.value.toUpperCase())}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-amber-300 font-mono uppercase font-bold focus:outline-none focus:border-amber-500"
+                required
+              />
+              <datalist id="registered-callsigns-list">
+                {observers.map((o) => (
+                  <option key={o.id} value={o.callsign}>
+                    {o.fullName}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-3">
+              <span className="text-neutral-200 font-bold block">
+                2. VERIFY YOUR IDENTITY (COMPLETE EITHER OPTION A OR B)
+              </span>
+
+              <div className="space-y-1">
+                <label className="text-[11px] text-neutral-400 block">
+                  Option A: Registered Contact Email (if you added one at sign-up)
+                </label>
+                <input
+                  type="email"
+                  placeholder="observer@wessexraptors.uk"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-neutral-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="text-center text-[10px] text-neutral-500 uppercase tracking-widest font-bold">
+                — OR —
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-neutral-300 block flex items-center gap-1">
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Option B: Wessex Raptor Security Question</span>
+                </label>
+                <p className="text-[11px] text-neutral-400 font-sans">
+                  Which raptor has a deeply forked V-shaped tail frequently seen circling over the Ridgeway?
+                </p>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {['Red Kite', 'Mallard Duck', 'Mute Swan'].map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setResetChallengeAnswer(opt)}
+                      className={`py-2 px-2 rounded-lg text-[11px] font-bold border cursor-pointer transition-all ${
+                        resetChallengeAnswer === opt
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {resetChallengeAnswer === opt ? '✓ ' : ''}
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-neutral-300 font-bold">3. NEW PASSWORD / PIN</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPasscode((prev) => !prev)}
+                    className="text-[10px] text-neutral-400 hover:text-amber-300 cursor-pointer"
+                  >
+                    {showNewPasscode ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                <input
+                  type={showNewPasscode ? 'text' : 'password'}
+                  placeholder="At least 4 characters"
+                  value={newPasscode}
+                  onChange={(e) => setNewPasscode(e.target.value)}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-neutral-100 font-mono focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-neutral-300 font-bold block">CONFIRM NEW PASSWORD</label>
+                <input
+                  type={showNewPasscode ? 'text' : 'password'}
+                  placeholder="Re-enter password"
+                  value={confirmPasscode}
+                  onChange={(e) => setConfirmPasscode(e.target.value)}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-neutral-100 font-mono focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold font-display-tactical text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" /> Save New Password &amp; Sign In
             </button>
           </form>
         )}
@@ -344,3 +642,4 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     </div>
   );
 };
+

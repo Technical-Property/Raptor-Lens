@@ -29,6 +29,7 @@ export interface ObserverProfile {
   affiliation?: string;
   specialties?: string[];
   contactEmail?: string;
+  passcode?: string;
   isHumanVerified?: boolean;
   homeHotspot: string;
   hotspotId: string;

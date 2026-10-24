@@ -103,6 +103,52 @@
         "description": { "type": "string" }
       },
       "required": ["id", "title", "youtubeId", "status"]
+    },
+    "ObserverProfile": {
+      "title": "ObserverProfile",
+      "description": "Registered community observer profile, badge, experience tier, and field credentials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "callsign": { "type": "string" },
+        "fullName": { "type": "string" },
+        "badge": { "type": "string" },
+        "experienceLevel": { "type": "string" },
+        "yearsExperience": { "type": "number" },
+        "affiliation": { "type": "string" },
+        "specialties": { "type": "array" },
+        "contactEmail": { "type": "string" },
+        "passcode": { "type": "string" },
+        "isHumanVerified": { "type": "boolean" },
+        "homeHotspot": { "type": "string" },
+        "hotspotId": { "type": "string" },
+        "sightingsCount": { "type": "number" },
+        "verified": { "type": "boolean" },
+        "opticsGear": { "type": "string" },
+        "bio": { "type": "string" },
+        "joinedDate": { "type": "string" },
+        "avatarColor": { "type": "string" }
+      },
+      "required": ["id", "callsign", "fullName", "badge", "homeHotspot"]
+    },
+    "CommunityDiscussion": {
+      "title": "CommunityDiscussion",
+      "description": "Community field forum discussion threads and replies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "authorCallsign": { "type": "string" },
+        "authorBadge": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "timeAgo": { "type": "string" },
+        "upvotes": { "type": "number" },
+        "tags": { "type": "array" },
+        "replies": { "type": "array" }
+      },
+      "required": ["id", "title", "authorCallsign", "category", "content"]
     }
   },
   "firestore": {
@@ -117,6 +163,14 @@
     "/groupSkywatches/{skywatchId}": {
       "schema": "GroupSkywatch",
       "description": "Community group skywatch meetups along the Ridgeway"
+    },
+    "/observers/{observerId}": {
+      "schema": "ObserverProfile",
+      "description": "Registered community observers and credentials"
+    },
+    "/discussions/{discussionId}": {
+      "schema": "CommunityDiscussion",
+      "description": "Community field forum threads and Q&A"
     },
     "/cameraConfigs/{cameraId}": {
       "schema": "CameraConfig",

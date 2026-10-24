@@ -113,6 +113,8 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
   const [fullName, setFullName] = useState(existingProfile?.fullName || '');
   const [callsign, setCallsign] = useState(existingProfile?.callsign || currentCallsign || '');
   const [contactEmail, setContactEmail] = useState(existingProfile?.contactEmail || '');
+  const [passcode, setPasscode] = useState(existingProfile?.passcode || '');
+  const [showPasscode, setShowPasscode] = useState(false);
   const [homeHotspot, setHomeHotspot] = useState(existingProfile?.homeHotspot || 'Barbury Castle Country Park');
   
   // Experience Tracking
@@ -145,10 +147,14 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
       setBotAlert(null);
       setUserChallengeAnswer('');
       setHoneypotValue('');
+      setFullName(existingProfile?.fullName || '');
+      setCallsign(existingProfile?.callsign || currentCallsign || '');
+      setContactEmail(existingProfile?.contactEmail || '');
+      setPasscode(existingProfile?.passcode || '');
       // Pick random challenge
       setActiveChallengeIdx(Math.floor(Math.random() * FIELD_CHALLENGES.length));
     }
-  }, [isOpen]);
+  }, [isOpen, existingProfile, currentCallsign]);
 
   if (!isOpen) return null;
 
@@ -259,6 +265,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
       callsign: callsign.trim().toUpperCase(),
       fullName: fullName.trim(),
       contactEmail: contactEmail.trim(),
+      passcode: passcode.trim() || undefined,
       badge: deriveBadge(experienceLevel),
       experienceLevel,
       yearsExperience: Number(yearsExperience) || 1,
@@ -455,8 +462,34 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-mono-tactical text-neutral-300 font-semibold flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PASSWORD / FIELD PIN</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasscode((prev) => !prev)}
+                    className="text-[10px] font-mono-tactical text-neutral-400 hover:text-amber-300 cursor-pointer"
+                  >
+                    {showPasscode ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                <input
+                  type={showPasscode ? 'text' : 'password'}
+                  placeholder="Create a password or 4-6 digit PIN"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 font-mono focus:outline-none focus:border-amber-500 transition-colors"
+                />
+                <span className="text-[10px] text-neutral-500 mt-1 block">
+                  Protects your observer callsign across devices. Forgot it? Reset anytime in Sign In.
+                </span>
+              </div>
+
+              <div>
                 <label className="text-xs font-mono-tactical text-neutral-300 block mb-1 font-semibold">
-                  CONTACT EMAIL (OPTIONAL / PRIVATE)
+                  CONTACT EMAIL (FOR PASSWORD RECOVERY)
                 </label>
                 <input
                   type="email"
@@ -466,28 +499,28 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-500 transition-colors"
                 />
                 <span className="text-[10px] text-neutral-500 mt-1 block">
-                  Used exclusively for group skywatch notifications; never shared or spammed.
+                  Used for 1-click password recovery &amp; skywatch alerts; never shared publicly.
                 </span>
               </div>
+            </div>
 
-              <div>
-                <label className="text-xs font-mono-tactical text-neutral-300 block mb-1 font-semibold">
-                  PRIMARY HOME RIDGEWAY SECTOR
-                </label>
-                <select
-                  value={homeHotspot}
-                  onChange={(e) => setHomeHotspot(e.target.value)}
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-neutral-200 focus:outline-none focus:border-amber-500 cursor-pointer"
-                >
-                  <option value="Barbury Castle Country Park">Barbury Castle Country Park (Chalk Ramparts)</option>
-                  <option value="Hackpen Hill & White Horse">Hackpen Hill & White Horse (Scarp Thermals)</option>
-                  <option value="Avebury Henge & Stone Circle">Avebury Henge & Stone Circle (Megalith Corridors)</option>
-                  <option value="Fyfield Down Nature Reserve">Fyfield Down Nature Reserve (Sarsen Valleys)</option>
-                  <option value="Silbury Hill & Kennet Basin">Silbury Hill & Kennet Basin (River Corridors)</option>
-                  <option value="RSPB Fowlmere Nature Reserve">RSPB Fowlmere Nature Reserve (Chalk Springlines)</option>
-                  <option value="Ridgeway Trail Mobile Scout">Ridgeway Trail Mobile Scout (Full Escarpment)</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-xs font-mono-tactical text-neutral-300 block mb-1 font-semibold">
+                PRIMARY HOME RIDGEWAY SECTOR
+              </label>
+              <select
+                value={homeHotspot}
+                onChange={(e) => setHomeHotspot(e.target.value)}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-neutral-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="Barbury Castle Country Park">Barbury Castle Country Park (Chalk Ramparts)</option>
+                <option value="Hackpen Hill & White Horse">Hackpen Hill & White Horse (Scarp Thermals)</option>
+                <option value="Avebury Henge & Stone Circle">Avebury Henge & Stone Circle (Megalith Corridors)</option>
+                <option value="Fyfield Down Nature Reserve">Fyfield Down Nature Reserve (Sarsen Valleys)</option>
+                <option value="Silbury Hill & Kennet Basin">Silbury Hill & Kennet Basin (River Corridors)</option>
+                <option value="RSPB Fowlmere Nature Reserve">RSPB Fowlmere Nature Reserve (Chalk Springlines)</option>
+                <option value="Ridgeway Trail Mobile Scout">Ridgeway Trail Mobile Scout (Full Escarpment)</option>
+              </select>
             </div>
           </div>
 
