@@ -92,7 +92,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs') return DEFAULT_CAMERA_VIDEO_ID;
+      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
     } catch {
       return '';

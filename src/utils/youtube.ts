@@ -5,8 +5,8 @@
  */
 
 // Verified 24/7 active live raptor & wildlife streams
-export const DEFAULT_CAMERA_VIDEO_ID = 'wUmvCR2YBMQ'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
-export const RAPTORLENS_STATION_VIDEO_ID = 'wUmvCR2YBMQ'; // Official RaptorLens UK Live Cam
+export const DEFAULT_CAMERA_VIDEO_ID = 'D9NvW7EA1B0'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
+export const RAPTORLENS_STATION_VIDEO_ID = 'D9NvW7EA1B0'; // Official RaptorLens UK Live Cam
 export const UK_OWL_KESTREL_VIDEO_ID = 'q28Q9_qzqyg'; // Robert E Fuller UK Barn Owl, Kestrel & Tawny Owl Live Cam
 export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon Cam 1
 export const OSPREY_UK_VIDEO_ID = 'V08ET209nvU';       // Rutland Osprey Project (Manton Bay, UK) Live Cam
@@ -37,7 +37,7 @@ export const POPULAR_CAMERA_PRESETS: CameraPresetOption[] = [
     badge: 'PRIMARY STATION',
     videoId: RAPTORLENS_STATION_VIDEO_ID,
     channelName: 'RaptorLens UK Official Broadcast',
-    channelUrl: 'https://youtube.com/live/wUmvCR2YBMQ',
+    channelUrl: 'https://youtube.com/live/D9NvW7EA1B0',
     species: 'Red Kite, Buzzard, Kestrel & Ridge Weather',
     location: 'Hackpen Hill • Barbury Fort • Field • Perch',
     description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View.',

@@ -88,8 +88,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      // Ensure previous placeholder IDs migrate to the official wUmvCR2YBMQ stream
-      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs') return DEFAULT_CAMERA_VIDEO_ID;
+      // Ensure previous placeholder IDs migrate to the official D9NvW7EA1B0 stream
+      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
     } catch {
       return '';
@@ -97,7 +97,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
     try {
-      return localStorage.getItem('raptorlens_channel_url') || '';
+      const savedUrl = localStorage.getItem('raptorlens_channel_url') || '';
+      if (savedUrl.includes('wUmvCR2YBMQ')) return 'https://youtube.com/live/D9NvW7EA1B0';
+      return savedUrl;
     } catch {
       return '';
     }
