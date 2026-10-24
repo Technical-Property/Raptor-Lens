@@ -30,6 +30,11 @@
         "windSpeedMph": { "type": "number" },
         "thermalStrength": { "type": "string" },
         "verificationStatus": { "type": "string" },
+        "markerCategory": {
+          "type": "string",
+          "enum": ["raptor", "sky", "walkers"],
+          "description": "Category for Live Cam DVR Rewind Markers"
+        },
         "corroborations": { "type": "array" },
         "auditTrail": { "type": "array" }
       },

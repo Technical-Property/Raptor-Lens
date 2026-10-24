@@ -111,8 +111,9 @@ export function subscribeToSightings(
  */
 export async function saveSightingToFirestore(sighting: SightingLog): Promise<void> {
   try {
+    const clean = JSON.parse(JSON.stringify(sighting));
     const docRef = doc(db, SIGHTINGS_COLLECTION, sighting.id);
-    await setDoc(docRef, sighting);
+    await setDoc(docRef, clean, { merge: true });
   } catch (err) {
     console.error('Error saving sighting to Firestore:', err);
     throw err;

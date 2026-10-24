@@ -112,6 +112,7 @@ export interface SightingLog {
   isSchedule1?: boolean;
   isFuzzed?: boolean;
   privacyRadiusKm?: number;
+  markerCategory?: 'raptor' | 'sky' | 'walkers';
   auditTrail: AuditEntry[];
 }
 

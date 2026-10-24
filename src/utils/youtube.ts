@@ -249,6 +249,7 @@ export type StreamPlayMode = 'video' | 'channel' | 'demo' | 'webcam';
 
 /**
  * Generates the embed URL for either a direct live video ID, a channel live stream, or a demo stream.
+ * Includes enablejsapi=1 so DVR Rewind Markers can programmatically seek the YouTube player.
  */
 export function buildYouTubeEmbedSrc(options: {
   videoId: string;
@@ -256,15 +257,20 @@ export function buildYouTubeEmbedSrc(options: {
   mode?: StreamPlayMode;
 }): string {
   const { videoId, channelId, mode = 'video' } = options;
+  const originParam =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `&origin=${encodeURIComponent(window.location.origin)}`
+      : '';
 
   if (mode === 'demo') {
-    return `https://www.youtube.com/embed/${DEMO_NATURE_VIDEO_ID}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${DEMO_NATURE_VIDEO_ID}`;
+    return `https://www.youtube.com/embed/${DEMO_NATURE_VIDEO_ID}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&loop=1&playlist=${DEMO_NATURE_VIDEO_ID}${originParam}`;
   }
 
   if (mode === 'channel' && channelId && channelId.startsWith('UC')) {
-    return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1`;
+    return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1${originParam}`;
   }
 
   const cleanVideoId = videoId || DEFAULT_CAMERA_VIDEO_ID;
-  return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1`;
+  return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1${originParam}`;
 }
+

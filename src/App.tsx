@@ -518,12 +518,19 @@ export default function App() {
       count: newSighting.count,
     });
 
-    if (privacy.fuzzed) {
+    if (newSighting.markerCategory === 'sky' || newSighting.markerCategory === 'walkers') {
+      showToast(`✓ Live DVR Rewind Marker saved: ${newSighting.speciesName} (${newSighting.locationName})`);
+    } else if (privacy.fuzzed) {
       showToast(`🔒 Schedule 1 Protection: ${newSighting.speciesName} exact coordinates coarsened to a ${privacy.fuzzRadiusKm}km sector.`);
     } else {
       showToast(`✓ Contact confirmed: ${newSighting.count}x ${newSighting.speciesName} at ${newSighting.locationName}`);
     }
   };
+
+  const raptorSightings = useMemo(
+    () => sightings.filter((s) => !s.markerCategory || s.markerCategory === 'raptor'),
+    [sightings]
+  );
 
   const handleSubmitBetaFeedback = (entry: BetaFeedbackEntry) => {
     setBetaFeedbacks((prev) => [entry, ...prev]);
@@ -1120,7 +1127,7 @@ export default function App() {
               {/* Tactical Leaflet Map Canvas */}
               <TacticalMap
                 hotspots={hotspots}
-                sightings={sightings}
+                sightings={raptorSightings}
                 selectedHotspot={selectedHotspot}
                 onSelectHotspot={(spot) => setSelectedHotspot(spot)}
                 onSelectSighting={(s) => {
@@ -1319,7 +1326,7 @@ export default function App() {
 
               {activeTab === 'sightings' ? (
                 <SightingLogger
-                  sightings={sightings}
+                  sightings={raptorSightings}
                   hotspots={hotspots}
                   speciesList={speciesList}
                   currentCallsign={currentCallsign}

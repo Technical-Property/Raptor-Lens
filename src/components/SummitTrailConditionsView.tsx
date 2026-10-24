@@ -140,6 +140,27 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [quickSpotZone, setQuickSpotZone] = useState<string>('Hackpen Hill View');
   const [quickSpotNotes, setQuickSpotNotes] = useState<string>('');
   const [dvrFlagToast, setDvrFlagToast] = useState<string | null>(null);
+  const [dvrMarkerTab, setDvrMarkerTab] = useState<'raptor' | 'sky' | 'walkers'>('raptor');
+  const [dvrFilterTab, setDvrFilterTab] = useState<'all' | 'raptor' | 'sky' | 'walkers'>('all');
+  const [customDvrNote, setCustomDvrNote] = useState<string>('');
+  const [customDvrZone, setCustomDvrZone] = useState<string>('Barbury Fort View');
+  const [activeRewindMarker, setActiveRewindMarker] = useState<{
+    id: string;
+    title: string;
+    zone: string;
+    rewindText: string;
+    timeUk: string;
+    category: 'raptor' | 'sky' | 'walkers';
+    offsetSeconds: number;
+  } | null>(null);
+
+  // YouTube IFrame Player API refs for real-time DVR stream rewinding
+  const youtubeIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const liveEdgeSecondsRef = useRef<number>(0);
+  const currentPlayheadRef = useRef<number>(0);
+  const pendingSeekOffsetRef = useRef<number | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+
   const [isBreezeActive, setIsBreezeActive] = useState<boolean>(tacticalAudio.isAmbientPlaying);
   const [activeAudioCall, setActiveAudioCall] = useState<string | null>(null);
 
@@ -438,8 +459,181 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     setQuickSpotNotes('');
   };
 
-  // Instant 1-Click "Bird on Cam Right Now!" DVR Marker Handler
-  const handleInstantDvrFlag = (zoneName: string, defaultSpecies: string) => {
+  // Send a YouTube IFrame Player API command via postMessage
+  const sendYouTubeCommand = (func: string, args: any[] = []) => {
+    const win = youtubeIframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func,
+          args,
+        }),
+        '*'
+      );
+    } catch {}
+  };
+
+  // Register listening handshake with YouTube embed so it streams currentTime/duration telemetry
+  const initYouTubeDvrBridge = () => {
+    const win = youtubeIframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage(
+        JSON.stringify({
+          event: 'listening',
+          id: 'raptorlens-dvr',
+          channel: 'widget',
+        }),
+        '*'
+      );
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.origin.includes('youtube.com') && !event.origin.includes('youtube-nocookie.com')) {
+        return;
+      }
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.event === 'infoDelivery' && data.info) {
+          const ct = typeof data.info.currentTime === 'number' ? data.info.currentTime : 0;
+          const dur = typeof data.info.duration === 'number' ? data.info.duration : 0;
+
+          if (ct > 0) {
+            currentPlayheadRef.current = ct;
+          }
+          const latestEdge = Math.max(liveEdgeSecondsRef.current, dur, ct);
+          if (latestEdge > 0) {
+            liveEdgeSecondsRef.current = latestEdge;
+          }
+
+          // If a user clicked a rewind marker before the first telemetry packet arrived, execute seek immediately
+          if (pendingSeekOffsetRef.current !== null && liveEdgeSecondsRef.current > 0) {
+            const offset = pendingSeekOffsetRef.current;
+            pendingSeekOffsetRef.current = null;
+            const target = Math.max(0, liveEdgeSecondsRef.current - offset);
+            sendYouTubeCommand('seekTo', [target, true]);
+            sendYouTubeCommand('playVideo', []);
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('message', handleMessage);
+    const heartbeat = setInterval(() => {
+      if (liveEdgeSecondsRef.current === 0) {
+        initYouTubeDvrBridge();
+      } else {
+        // Advance live edge by 2s every 2s so relative rewind stays accurate even while rewound
+        liveEdgeSecondsRef.current += 2;
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      clearInterval(heartbeat);
+    };
+  }, []);
+
+  // Programmatically rewind the live YouTube stream to a specific DVR marker
+  const handleSeekToDvrMarker = (marker: {
+    id: string;
+    speciesName: string;
+    locationName: string;
+    rewindText: string;
+    time: string;
+    diffSeconds: number;
+    markerCategory?: 'raptor' | 'sky' | 'walkers';
+  }) => {
+    tacticalAudio.playConfirmChime();
+
+    // Ensure we are on the video stream mode
+    if (streamMode === 'webcam') {
+      stopDeviceCamera();
+    }
+
+    // Add a 10-second lead-in buffer so the viewer sees the bird, sky, or walkers arrive
+    const leadInSeconds = marker.diffSeconds > 15 ? marker.diffSeconds + 10 : Math.max(5, marker.diffSeconds);
+
+    initYouTubeDvrBridge();
+
+    if (liveEdgeSecondsRef.current > 0) {
+      const targetTime = Math.max(0, liveEdgeSecondsRef.current - leadInSeconds);
+      sendYouTubeCommand('seekTo', [targetTime, true]);
+      sendYouTubeCommand('playVideo', []);
+      currentPlayheadRef.current = targetTime;
+    } else {
+      // Queue seek for instant execution when player responds, and send a 12h DVR baseline seek
+      pendingSeekOffsetRef.current = leadInSeconds;
+      const fallbackDvrEdge = 43200; // Standard 12-hour YouTube Live DVR window in seconds
+      sendYouTubeCommand('seekTo', [Math.max(0, fallbackDvrEdge - leadInSeconds), true]);
+      sendYouTubeCommand('playVideo', []);
+    }
+
+    const cleanZone = marker.locationName.replace('Station Cam ', '').replace('Barbury Cam ', '').replace(/[()]/g, '');
+
+    setActiveRewindMarker({
+      id: marker.id,
+      title: marker.speciesName,
+      zone: cleanZone,
+      rewindText: marker.rewindText,
+      timeUk: marker.time || 'Today',
+      category: marker.markerCategory || 'raptor',
+      offsetSeconds: leadInSeconds,
+    });
+
+    setDvrFlagToast(
+      `⏪ Rewinding live stream ${marker.rewindText} to "${marker.speciesName}" (${cleanZone})...`
+    );
+    setTimeout(() => setDvrFlagToast(null), 5000);
+  };
+
+  // Nudge the rewound stream backward or forward by deltaSeconds (e.g., -30s or +30s)
+  const handleNudgeRewind = (deltaSeconds: number) => {
+    tacticalAudio.playRadarPing(840);
+    if (!activeRewindMarker) return;
+
+    const nextOffset = Math.max(0, activeRewindMarker.offsetSeconds - deltaSeconds);
+    if (nextOffset <= 5) {
+      handleReturnToLiveEdge();
+      return;
+    }
+
+    const edge = liveEdgeSecondsRef.current > 0 ? liveEdgeSecondsRef.current : 43200;
+    const targetTime = Math.max(0, edge - nextOffset);
+    sendYouTubeCommand('seekTo', [targetTime, true]);
+    sendYouTubeCommand('playVideo', []);
+
+    const mins = Math.round(nextOffset / 60);
+    const nextText = mins < 1 ? `-${nextOffset}s` : mins < 60 ? `-${mins}m` : `-${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
+
+    setActiveRewindMarker({
+      ...activeRewindMarker,
+      offsetSeconds: nextOffset,
+      rewindText: nextText,
+    });
+  };
+
+  // Snap the YouTube player back to the real-time live broadcast edge
+  const handleReturnToLiveEdge = () => {
+    tacticalAudio.playRadarPing(920);
+    const edge = liveEdgeSecondsRef.current > 0 ? liveEdgeSecondsRef.current + 30 : 999999;
+    sendYouTubeCommand('seekTo', [edge, true]);
+    sendYouTubeCommand('playVideo', []);
+    setActiveRewindMarker(null);
+    setDvrFlagToast('🔴 Returned to real-time live camera broadcast.');
+    setTimeout(() => setDvrFlagToast(null), 3500);
+  };
+
+  // Instant 1-Click Live DVR Marker Handler (Supports Raptors, Sky Conditions, and Summit Walkers)
+  const handleInstantDvrFlag = (
+    zoneName: string,
+    labelName: string,
+    category: 'raptor' | 'sky' | 'walkers' = 'raptor'
+  ) => {
     tacticalAudio.playConfirmChime();
     const now = new Date();
     const ukTime = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
@@ -450,14 +644,21 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       'Peregrine Falcon': 'peregrine-falcon',
     };
 
+    const privacyNote =
+      category === 'walkers'
+        ? ' • Distant 3.0 km ridge silhouette only (no facial or personal ID possible).'
+        : category === 'sky'
+        ? ' • Atmospheric downland sky & visibility marker.'
+        : '';
+
     if (onSaveSighting) {
       const dvrSighting: SightingLog = {
         id: `dvr-cam-${Date.now()}`,
         timestamp: now.toISOString(),
         date: now.toISOString().split('T')[0],
         time: ukTime,
-        speciesId: speciesIdMap[defaultSpecies] || 'kestrel',
-        speciesName: defaultSpecies,
+        speciesId: speciesIdMap[labelName] || 'red-kite',
+        speciesName: labelName,
         locationName: `Station Cam (${zoneName})`,
         sectorId: (activeSectorId || 'ridgeway-wessex') as SectorId,
         coordinates: [51.4835, -1.7895],
@@ -467,50 +668,192 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         opticalGear: 'Station Cam Live DVR',
         observerCallsign: currentCallsign,
         observerRank: 'Verified Spotter',
-        notes: `Live DVR Timestamp Flagged on ${zoneName} at ${ukTime} UK.`,
+        notes: `Live DVR Timestamp Flagged: ${labelName} on ${zoneName} at ${ukTime} UK.${privacyNote}`,
         confidence: 'High (80%)',
         windDirection: weather.windDirection,
         windSpeedMph: Math.round(weather.windSpeedKt * 1.15),
         thermalStrength: weather.soaringLiftRating === 'EXCELLENT' ? 'Strong' : 'Moderate',
         verificationStatus: 'Corroborated by Peers',
         corroborations: [],
+        markerCategory: category,
         auditTrail: [
           {
             timestamp: now.toISOString(),
             action: 'INITIAL_LOG',
             actorCallsign: currentCallsign,
-            details: `1-Click Live DVR Marker (${zoneName})`,
+            details: `1-Click Live DVR Marker (${category.toUpperCase()}: ${labelName} • ${zoneName})`,
           },
         ],
       };
       onSaveSighting(dvrSighting);
     }
 
-    setDvrFlagToast(`DVR Marker saved for ${zoneName} (${ukTime} UK)! Viewers can now rewind to this exact moment.`);
+    if (onAddDispatch) {
+      const catBadge =
+        category === 'sky' ? 'SKY & VISIBILITY' : category === 'walkers' ? 'SUMMIT TRAIL ACTIVITY' : 'CAM SIGHTING';
+      const autoDispatch: RssDispatch = {
+        id: `disp-dvr-${Date.now()}`,
+        title: `DVR MARKER (${catBadge}): ${labelName.toUpperCase()} AT ${zoneName.toUpperCase()}`,
+        timestamp: now.toISOString(),
+        timeAgo: 'Just now',
+        source: 'Station Cam Live DVR',
+        category: category === 'raptor' ? 'SIGHTING ALERT' : 'FIELD BULLETIN',
+        priority: 'NORMAL',
+        summary: `${labelName} marked on ${zoneName} at ${ukTime} UK by ${currentCallsign}.${privacyNote}`,
+        hotspotRef: 'barbury-castle',
+        author: `Spotter: ${currentCallsign}`,
+        verified: true,
+      };
+      onAddDispatch(autoDispatch);
+    }
+
+    setDvrFlagToast(`✓ DVR Rewind Marker saved: "${labelName}" (${zoneName} at ${ukTime} UK)! Click any marker below to rewind.`);
     setTimeout(() => setDvrFlagToast(null), 5000);
   };
 
-  // Compute live DVR rewind offsets for sightings within the last 12 hours (YouTube DVR window)
-  const recentDvrMarkers = sightings
+  const handleCustomDvrSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = customDvrNote.trim();
+    if (!trimmed) return;
+    handleInstantDvrFlag(customDvrZone, trimmed, dvrMarkerTab);
+    setCustomDvrNote('');
+  };
+
+  // Baseline rolling DVR highlights within the current 12-hour window so visitors can immediately test 1-click rewind across all 3 categories
+  const baselineSessionMarkers: SightingLog[] = [
+    {
+      id: 'dvr-seed-walkers-1',
+      timestamp: new Date(sessionStartRef.current - 9 * 60 * 1000).toISOString(),
+      date: new Date(sessionStartRef.current - 9 * 60 * 1000).toISOString().split('T')[0],
+      time: new Date(sessionStartRef.current - 9 * 60 * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }),
+      speciesId: 'red-kite',
+      speciesName: 'Walkers on Barbury Summit (Silhouette)',
+      locationName: 'Station Cam (Barbury Fort View)',
+      coordinates: [51.4835, -1.7895],
+      count: 1,
+      behavior: 'Escarpment Lift',
+      opticalGear: 'Station Cam Live DVR',
+      observerCallsign: 'RIDGE-WATCH-01',
+      notes: 'Distant 3.0 km silhouette of walkers crossing the Iron Age rampart skyline (no faces/identities visible).',
+      confidence: 'Confirmed (100%)',
+      windDirection: weather.windDirection,
+      windSpeedMph: 14,
+      thermalStrength: 'Moderate',
+      verificationStatus: 'Corroborated by Peers',
+      corroborations: [],
+      markerCategory: 'walkers',
+      auditTrail: [],
+    },
+    {
+      id: 'dvr-seed-sky-1',
+      timestamp: new Date(sessionStartRef.current - 22 * 60 * 1000).toISOString(),
+      date: new Date(sessionStartRef.current - 22 * 60 * 1000).toISOString().split('T')[0],
+      time: new Date(sessionStartRef.current - 22 * 60 * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }),
+      speciesId: 'red-kite',
+      speciesName: 'Dramatic Sunbeams & Ridge Cloudbreak',
+      locationName: 'Station Cam (Hackpen Hill View)',
+      coordinates: [51.4835, -1.7895],
+      count: 1,
+      behavior: 'Thermal Soaring',
+      opticalGear: 'Station Cam Live DVR',
+      observerCallsign: 'CHALK-METEO',
+      notes: 'Shafts of sunlight breaking across the white chalk escarpment toward Hackpen Hill.',
+      confidence: 'Confirmed (100%)',
+      windDirection: weather.windDirection,
+      windSpeedMph: 12,
+      thermalStrength: 'Strong',
+      verificationStatus: 'Corroborated by Peers',
+      corroborations: [],
+      markerCategory: 'sky',
+      auditTrail: [],
+    },
+    {
+      id: 'dvr-seed-raptor-1',
+      timestamp: new Date(sessionStartRef.current - 37 * 60 * 1000).toISOString(),
+      date: new Date(sessionStartRef.current - 37 * 60 * 1000).toISOString().split('T')[0],
+      time: new Date(sessionStartRef.current - 37 * 60 * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }),
+      speciesId: 'kestrel',
+      speciesName: 'Common Kestrel',
+      locationName: 'Station Cam (Perch View)',
+      coordinates: [51.4835, -1.7895],
+      count: 1,
+      behavior: 'Perched on Post/Sarsen',
+      opticalGear: 'Station Cam Live DVR',
+      observerCallsign: 'WESSEX-SCOUT-07',
+      notes: 'Kestrel resting on the foreground perch post scanning the tall grass.',
+      confidence: 'Confirmed (100%)',
+      windDirection: weather.windDirection,
+      windSpeedMph: 14,
+      thermalStrength: 'Moderate',
+      verificationStatus: 'Corroborated by Peers',
+      corroborations: [],
+      markerCategory: 'raptor',
+      auditTrail: [],
+    },
+    {
+      id: 'dvr-seed-raptor-2',
+      timestamp: new Date(sessionStartRef.current - 68 * 60 * 1000).toISOString(),
+      date: new Date(sessionStartRef.current - 68 * 60 * 1000).toISOString().split('T')[0],
+      time: new Date(sessionStartRef.current - 68 * 60 * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }),
+      speciesId: 'red-kite',
+      speciesName: 'Red Kite Soaring Pair',
+      locationName: 'Station Cam (Barbury Fort View)',
+      coordinates: [51.4835, -1.7895],
+      count: 2,
+      behavior: 'Escarpment Lift',
+      opticalGear: 'Station Cam Live DVR',
+      observerCallsign: 'SARUM-PEREGRINE',
+      notes: 'Two Red Kites riding the northern slope updraft above Barbury Castle ramparts.',
+      confidence: 'Confirmed (100%)',
+      windDirection: weather.windDirection,
+      windSpeedMph: 15,
+      thermalStrength: 'Strong',
+      verificationStatus: 'Corroborated by Peers',
+      corroborations: [],
+      markerCategory: 'raptor',
+      auditTrail: [],
+    },
+  ];
+
+  // Combine live Firestore DVR sightings with baseline markers within the 12-hour (720 min) YouTube DVR window
+  const recentDvrMarkers = [...sightings, ...baselineSessionMarkers]
     .map((s) => {
       const ts = new Date(s.timestamp).getTime();
-      const diffMins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+      const diffSeconds = Math.max(0, Math.round((Date.now() - ts) / 1000));
+      const diffMins = Math.floor(diffSeconds / 60);
       let rewindText = 'LIVE NOW';
-      if (diffMins >= 1 && diffMins < 60) {
+      if (diffSeconds >= 15 && diffMins < 1) {
+        rewindText = `-${diffSeconds}s`;
+      } else if (diffMins >= 1 && diffMins < 60) {
         rewindText = `-${diffMins}m`;
       } else if (diffMins >= 60) {
         const hrs = Math.floor(diffMins / 60);
         const mins = diffMins % 60;
         rewindText = `-${hrs}h ${String(mins).padStart(2, '0')}m`;
       }
+
+      // Infer markerCategory if not explicitly set
+      let inferredCategory: 'raptor' | 'sky' | 'walkers' = s.markerCategory || 'raptor';
+      const lowerName = s.speciesName.toLowerCase();
+      if (!s.markerCategory) {
+        if (lowerName.includes('walker') || lowerName.includes('hiker') || lowerName.includes('rider')) {
+          inferredCategory = 'walkers';
+        } else if (lowerName.includes('sky') || lowerName.includes('cloud') || lowerName.includes('sunset') || lowerName.includes('sunbeam') || lowerName.includes('visibility')) {
+          inferredCategory = 'sky';
+        }
+      }
+
       return {
         ...s,
+        markerCategory: inferredCategory,
+        diffSeconds,
         diffMins,
         rewindText,
       };
     })
     .filter((s) => !Number.isNaN(s.diffMins) && s.diffMins <= 720)
-    .slice(0, 3);
+    .filter((s) => (dvrFilterTab === 'all' ? true : s.markerCategory === dvrFilterTab))
+    .slice(0, 6);
 
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-fadeIn">
@@ -909,6 +1252,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             /* CASE C: Standard Embed Player */
             <>
               <iframe
+                ref={youtubeIframeRef}
+                onLoad={initYouTubeDvrBridge}
                 key={`${activeEmbedSrc}-${playerRefreshKey}`}
                 title="Barbury Castle Summit Live Cam"
                 src={activeEmbedSrc}
@@ -919,7 +1264,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
               {/* Clean Camera Label */}
               <div className="absolute bottom-2 left-2 pointer-events-none bg-neutral-950/85 backdrop-blur-md border border-neutral-800 px-2.5 py-1 rounded-lg text-[10px] font-mono-tactical text-neutral-300 flex items-center gap-2 shadow-lg">
-                {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
+                {activeRewindMarker ? (
+                  <>
+                    <span className="text-rose-400 font-bold animate-pulse">⏪ DVR REWIND ({activeRewindMarker.rewindText})</span>
+                    <span className="text-neutral-600 hidden sm:inline">|</span>
+                    <span className="text-amber-300 font-bold hidden sm:inline">{activeRewindMarker.title}</span>
+                  </>
+                ) : activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
                   <>
                     <span className="text-emerald-400 font-bold">ROLLING STATION CAM</span>
                     <span className="text-neutral-600 hidden sm:inline">|</span>
@@ -950,13 +1301,58 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           )}
         </div>
 
+        {/* Active DVR Rewind Playback Control Strip (Appears when viewing a rewound marker) */}
+        {activeRewindMarker && (
+          <div className="px-3.5 py-2.5 bg-rose-950/75 border-t border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono-tactical animate-fadeIn">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded bg-rose-500 text-neutral-950 font-bold text-[10px] flex items-center gap-1">
+                ⏪ DVR REWIND ACTIVE ({activeRewindMarker.rewindText})
+              </span>
+              <span className="text-neutral-100 font-bold text-xs">
+                {activeRewindMarker.title}
+              </span>
+              <span className="text-neutral-300 text-[11px]">
+                • {activeRewindMarker.zone} ({activeRewindMarker.timeUk} UK)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleNudgeRewind(-30)}
+                className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 font-bold text-[11px] cursor-pointer transition-colors"
+                title="Rewind 30 seconds further back"
+              >
+                ⏪ -30s
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNudgeRewind(30)}
+                className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 font-bold text-[11px] cursor-pointer transition-colors"
+                title="Fast-forward 30 seconds"
+              >
+                ⏩ +30s
+              </button>
+              <button
+                type="button"
+                onClick={handleReturnToLiveEdge}
+                className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                title="Jump back to live real-time camera stream"
+              >
+                <span className="w-2 h-2 rounded-full bg-neutral-950 animate-ping"></span>
+                <span>Return to Live</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Smart After-Dark / Night Operations Notice (Auto-activates after UK sunset) */}
         {activeVideoId === DEFAULT_CAMERA_VIDEO_ID && weather.isAfterDark && (
           <div className="px-3.5 py-2.5 bg-indigo-950/60 border-t border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap text-xs font-mono-tactical">
             <div className="flex items-center gap-2.5">
               <Moon className="w-4 h-4 text-indigo-300 shrink-0" />
               <div className="text-[11px] text-indigo-100 leading-snug">
-                <strong className="text-indigo-300">Night Operations on the Ridgeway:</strong> The Wiltshire camera is currently in after-dark mode (Next sunrise: <strong>{weather.sunriseTime || '07:35'} UK</strong>). Drag the red YouTube timeline bar backwards to watch today&apos;s daylight sightings!
+                <strong className="text-indigo-300">Night Operations on the Ridgeway:</strong> The Wiltshire camera is currently in after-dark mode (Next sunrise: <strong>{weather.sunriseTime || '07:35'} UK</strong>). Click any DVR Rewind Marker below to jump straight to today&apos;s daylight sightings!
               </div>
             </div>
             <button
@@ -975,7 +1371,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
         {/* Station Cam Rolling 4-View Reference Guide + Live DVR Rewind Markers */}
         {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
-          <div className="p-3 bg-neutral-900/90 border-t border-neutral-800 space-y-3 text-xs font-mono-tactical">
+          <div className="p-3 sm:p-4 bg-neutral-900/90 border-t border-neutral-800 space-y-3.5 text-xs font-mono-tactical">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Navigation className="w-3.5 h-3.5 text-amber-400" />
@@ -1007,64 +1403,269 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               ))}
             </div>
 
-            {/* 1-Click "Bird on Cam Right Now!" Live DVR Timestamp Bar */}
-            <div className="pt-2 border-t border-neutral-800/90 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0"></span>
-                  <span className="text-neutral-100 font-bold text-[11px]">
-                    🦅 Spotted a Bird on Cam Right Now? Drop a Live DVR Rewind Marker:
-                  </span>
+            {/* Multi-Category Live DVR Rewind Marker Deck (Birds, Sky Conditions & Summit Walkers) */}
+            <div className="pt-3 border-t border-neutral-800/90 space-y-3">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0"></span>
+                    <span className="text-neutral-100 font-bold text-xs">
+                      Drop a Live DVR Rewind Marker on the Stream:
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 font-sans">
+                    Mark a bird sighting, dramatic Ridgeway sky conditions, or walkers silhouetted on the summit of Barbury Fort so visitors can rewind with 1 click.
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5">
+
+                {/* Category Selector Tabs for Marking */}
+                <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded-xl border border-neutral-800 self-start lg:self-auto flex-wrap">
                   {[
-                    { label: '🦅 On Perch View', zone: 'Perch View', species: 'Common Kestrel' },
-                    { label: '🌾 On Field View', zone: 'Field View', species: 'Common Buzzard' },
-                    { label: '⛰️ Hackpen View', zone: 'Hackpen Hill View', species: 'Red Kite' },
-                    { label: '🏰 Barbury Fort', zone: 'Barbury Fort View', species: 'Red Kite' },
-                  ].map((btn) => (
+                    { id: 'raptor' as const, label: '🦅 Bird on Cam', activeClass: 'bg-rose-500 text-neutral-950 font-bold' },
+                    { id: 'sky' as const, label: '🌅 Great Sky & Weather', activeClass: 'bg-amber-500 text-neutral-950 font-bold' },
+                    { id: 'walkers' as const, label: '🥾 Summit Walkers (3km)', activeClass: 'bg-cyan-500 text-neutral-950 font-bold' },
+                  ].map((tab) => (
                     <button
-                      key={btn.zone}
+                      key={tab.id}
                       type="button"
-                      onClick={() => handleInstantDvrFlag(btn.zone, btn.species)}
-                      className="min-h-[38px] sm:min-h-0 px-2.5 py-1.5 sm:py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 hover:text-white font-bold text-[11px] sm:text-[10px] cursor-pointer transition-all shadow-sm flex items-center justify-center"
-                      title={`Drop a live timestamp marker for ${btn.zone}`}
+                      onClick={() => {
+                        tacticalAudio.playRadarPing(820);
+                        setDvrMarkerTab(tab.id);
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer ${
+                        dvrMarkerTab === tab.id
+                          ? tab.activeClass
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
                     >
-                      {btn.label}
+                      {tab.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {dvrFlagToast && (
-                <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-[11px] font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>{dvrFlagToast}</span>
-                </div>
-              )}
-
-              {/* Recent DVR Rewind Markers (Last 12 Hours) */}
-              {recentDvrMarkers.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-0.5">
-                  {recentDvrMarkers.map((marker) => (
-                    <div
-                      key={marker.id}
-                      className="px-2.5 py-1.5 rounded-lg bg-neutral-950 border border-neutral-800/90 flex items-center justify-between gap-2 text-[10px]"
+              {/* 1-Click Preset Buttons for Selected Marker Category */}
+              {dvrMarkerTab === 'raptor' && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: '🦅 Kestrel / Owl on Perch', zone: 'Perch View', title: 'Common Kestrel' },
+                    { label: '🌾 Buzzard on Field View', zone: 'Field View', title: 'Common Buzzard' },
+                    { label: '⛰️ Red Kite over Hackpen', zone: 'Hackpen Hill View', title: 'Red Kite' },
+                    { label: '🏰 Raptor over Barbury Fort', zone: 'Barbury Fort View', title: 'Red Kite' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.label}
+                      type="button"
+                      onClick={() => handleInstantDvrFlag(btn.zone, btn.title, 'raptor')}
+                      className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 hover:text-white font-bold text-[11px] cursor-pointer transition-all shadow-sm flex items-center justify-center text-center"
                     >
-                      <div className="truncate">
-                        <span className="text-amber-300 font-bold">{marker.speciesName}</span>
-                        <span className="text-neutral-400"> • {marker.locationName.replace('Station Cam ', '').replace('Barbury Cam ', '')}</span>
-                      </div>
-                      <span
-                        className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold shrink-0"
-                        title="Drag the red YouTube timeline bar back by this amount to watch the sighting"
-                      >
-                        ⏪ {marker.rewindText}
-                      </span>
-                    </div>
+                      {btn.label}
+                    </button>
                   ))}
                 </div>
               )}
+
+              {dvrMarkerTab === 'sky' && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: '🌅 Golden Hour / Sunset Glow', zone: 'Hackpen Hill View', title: 'Golden Hour Sunset Sky' },
+                    { label: '☁️ Cloud Inversion & Mist', zone: 'Barbury Fort View', title: 'Ridge Cloud Inversion & Mist' },
+                    { label: '⛅ Dramatic Sunbeams & Clouds', zone: 'Field View', title: 'Dramatic Sunbeams & Clouds' },
+                    { label: '🔭 Crystal 30km Visibility', zone: 'Hackpen Hill View', title: 'Crystal 30km Downland Visibility' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.label}
+                      type="button"
+                      onClick={() => handleInstantDvrFlag(btn.zone, btn.title, 'sky')}
+                      className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 hover:text-white font-bold text-[11px] cursor-pointer transition-all shadow-sm flex items-center justify-center text-center"
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {dvrMarkerTab === 'walkers' && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { label: '🥾 Walkers on Barbury Summit', zone: 'Barbury Fort View', title: 'Walkers on Barbury Summit (Silhouette)' },
+                      { label: '🚶 Ridgeway Crest Hikers', zone: 'Hackpen Hill View', title: 'Ridgeway Trail Hikers on Crest' },
+                      { label: '🐕 Dog Walkers on Ramparts', zone: 'Barbury Fort View', title: 'Dog Walkers on Barbury Ramparts' },
+                      { label: '🐎 Riders on Hackpen Gallops', zone: 'Hackpen Hill View', title: 'Riders on Hackpen Chalk Gallops' },
+                    ].map((btn) => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => handleInstantDvrFlag(btn.zone, btn.title, 'walkers')}
+                        className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 hover:text-white font-bold text-[11px] cursor-pointer transition-all shadow-sm flex items-center justify-center text-center"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="px-3 py-1.5 rounded-lg bg-emerald-950/50 border border-emerald-500/30 text-emerald-300 text-[10px] font-sans flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>
+                      <strong>100% Privacy Safe (3.0 km Distance):</strong> At 3 km range, walkers on Barbury Fort and Hackpen Hill appear solely as tiny distant skyline silhouettes — zero faces or personal identities can ever be seen.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Custom Moment Input */}
+              <form onSubmit={handleCustomDvrSubmit} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-0.5">
+                <input
+                  type="text"
+                  value={customDvrNote}
+                  onChange={(e) => setCustomDvrNote(e.target.value)}
+                  placeholder={
+                    dvrMarkerTab === 'sky'
+                      ? 'Or type a custom sky moment (e.g. Pink sunset clouds over Hackpen)...'
+                      : dvrMarkerTab === 'walkers'
+                      ? 'Or type a custom summit moment (e.g. Group of walkers on top of Barbury Fort)...'
+                      : 'Or type a custom cam moment (e.g. Two Red Kites circling low over field)...'
+                  }
+                  className="flex-1 bg-neutral-950 border border-neutral-800 focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 font-sans focus:outline-none"
+                />
+                <div className="flex items-center gap-2">
+                  <select
+                    value={customDvrZone}
+                    onChange={(e) => setCustomDvrZone(e.target.value)}
+                    className="bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Barbury Fort View">Barbury Fort View</option>
+                    <option value="Hackpen Hill View">Hackpen Hill View</option>
+                    <option value="Field View">Field View</option>
+                    <option value="Perch View">Perch View</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={!customDvrNote.trim()}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                  >
+                    + Mark Rewind
+                  </button>
+                </div>
+              </form>
+
+              {dvrFlagToast && (
+                <div className="px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-[11px] font-bold flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{dvrFlagToast}</span>
+                  </div>
+                  {activeRewindMarker && (
+                    <button
+                      type="button"
+                      onClick={handleReturnToLiveEdge}
+                      className="text-[10px] underline text-amber-300 hover:text-amber-200 shrink-0 cursor-pointer"
+                    >
+                      Return to Live
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Clickable DVR Rewind Timeline Markers (Last 12 Hours) */}
+              <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-neutral-200 font-bold text-[11px]">
+                      Click Any Marker Below to Automatically Rewind the Video Stream:
+                    </span>
+                  </div>
+
+                  {/* Filter Pills for Rewind Timeline */}
+                  <div className="flex items-center gap-1 text-[10px]">
+                    {[
+                      { id: 'all' as const, label: 'All Moments' },
+                      { id: 'raptor' as const, label: '🦅 Birds' },
+                      { id: 'sky' as const, label: '🌅 Sky' },
+                      { id: 'walkers' as const, label: '🥾 Walkers' },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          tacticalAudio.playRadarPing(780);
+                          setDvrFilterTab(f.id);
+                        }}
+                        className={`px-2 py-0.5 rounded-lg border cursor-pointer transition-colors ${
+                          dvrFilterTab === f.id
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {recentDvrMarkers.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {recentDvrMarkers.map((marker) => {
+                      const isCurrentlyRewound = activeRewindMarker?.id === marker.id;
+                      const catIcon =
+                        marker.markerCategory === 'sky'
+                          ? '🌅'
+                          : marker.markerCategory === 'walkers'
+                          ? '🥾'
+                          : '🦅';
+                      const catBadgeColor =
+                        marker.markerCategory === 'sky'
+                          ? 'text-amber-300'
+                          : marker.markerCategory === 'walkers'
+                          ? 'text-cyan-300'
+                          : 'text-rose-300';
+
+                      return (
+                        <button
+                          key={marker.id}
+                          type="button"
+                          onClick={() => handleSeekToDvrMarker(marker)}
+                          className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 text-[11px] cursor-pointer transition-all group ${
+                            isCurrentlyRewound
+                              ? 'bg-rose-950/60 border-rose-500 ring-1 ring-rose-500/40 shadow-lg'
+                              : 'bg-neutral-950 hover:bg-neutral-900 border-neutral-800/90 hover:border-amber-500/50'
+                          }`}
+                          title={`Click to automatically rewind stream by ${marker.rewindText} to watch "${marker.speciesName}"`}
+                        >
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span>{catIcon}</span>
+                              <span className={`font-bold truncate ${catBadgeColor} group-hover:text-white transition-colors`}>
+                                {marker.speciesName}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-neutral-400 truncate flex items-center gap-1.5 font-sans">
+                              <span>{marker.locationName.replace('Station Cam ', '').replace('Barbury Cam ', '')}</span>
+                              {marker.time && (
+                                <>
+                                  <span>•</span>
+                                  <span>{marker.time} UK</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`px-2 py-1 rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 transition-all ${
+                              isCurrentlyRewound
+                                ? 'bg-rose-500 text-neutral-950'
+                                : 'bg-rose-500/20 group-hover:bg-rose-500 border border-rose-500/40 text-rose-300 group-hover:text-neutral-950'
+                            }`}
+                          >
+                            <span>⏪ {marker.rewindText}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
