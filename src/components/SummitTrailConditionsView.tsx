@@ -85,29 +85,39 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   onSaveSighting,
 }) => {
   const currentCam = LIVESTREAM_CHANNELS[0];
+  const [playerRefreshKey, setPlayerRefreshKey] = useState<number>(0);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
+      const migrated = localStorage.getItem('raptorlens_stream_migration_v4');
+      if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
+        localStorage.setItem('raptorlens_stream_migration_v4', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
+        localStorage.setItem('raptorlens_stream_mode', 'video');
+        return DEFAULT_CAMERA_VIDEO_ID;
+      }
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      // Ensure previous placeholder IDs migrate to the official D9NvW7EA1B0 stream
-      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
+      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || isRtmpStreamKeyOrUrl(saved)) {
+        return DEFAULT_CAMERA_VIDEO_ID;
+      }
       return saved;
     } catch {
-      return '';
+      return DEFAULT_CAMERA_VIDEO_ID;
     }
   });
   const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
     try {
       const savedUrl = localStorage.getItem('raptorlens_channel_url') || '';
-      if (savedUrl.includes('wUmvCR2YBMQ')) return 'https://youtube.com/live/D9NvW7EA1B0';
+      if (!savedUrl || savedUrl.includes('wUmvCR2YBMQ')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
       return savedUrl;
     } catch {
-      return '';
+      return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
     }
   });
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video' || saved === 'channel' || saved === 'demo' || saved === 'webcam') return saved;
+      if (saved === 'video' || saved === 'webcam') return saved;
       return 'video';
     } catch {
       return 'video';
@@ -458,6 +468,21 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </svg>
               <span className="hidden sm:inline">YouTube ↗</span>
             </a>
+
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                setStreamMode('video');
+                setPlayerRefreshKey((prev) => prev + 1);
+              }}
+              className="bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              title="Reload live stream player"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Reload Stream</span>
+            </button>
 
             <button
               onClick={() => {
@@ -822,6 +847,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             /* CASE C: Standard Embed Player */
             <>
               <iframe
+                key={`${activeEmbedSrc}-${playerRefreshKey}`}
                 title="Barbury Castle Summit Live Cam"
                 src={activeEmbedSrc}
                 className="w-full h-full border-0"

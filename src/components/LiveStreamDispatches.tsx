@@ -91,24 +91,34 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [selectedChannelId, setSelectedChannelId] = useState<string>(channels[0]?.id || 'stream-barbury-castle-livecam');
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
+      const migrated = localStorage.getItem('raptorlens_stream_migration_v4');
+      if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
+        localStorage.setItem('raptorlens_stream_migration_v4', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
+        localStorage.setItem('raptorlens_stream_mode', 'video');
+        return DEFAULT_CAMERA_VIDEO_ID;
+      }
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
+      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
     } catch {
-      return '';
+      return DEFAULT_CAMERA_VIDEO_ID;
     }
   });
   const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
     try {
-      return localStorage.getItem('raptorlens_channel_url') || '';
+      const saved = localStorage.getItem('raptorlens_channel_url') || '';
+      if (!saved || saved.includes('wUmvCR2YBMQ')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
+      return saved;
     } catch {
-      return '';
+      return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
     }
   });
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video' || saved === 'channel' || saved === 'demo') return saved;
+      if (saved === 'video') return saved;
       return 'video';
     } catch {
       return 'video';
