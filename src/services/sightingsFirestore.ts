@@ -1,7 +1,6 @@
 import { 
   collection, 
   doc, 
-  getDocs, 
   setDoc, 
   updateDoc, 
   query, 
@@ -13,8 +12,6 @@ import {
 import { db } from './firebase';
 import { SightingLog, CorroborationRecord } from '../types/raptor';
 import { ObserverProfile, GroupSkywatch, CommunityDiscussion } from '../types/community';
-import { INITIAL_SIGHTINGS } from '../data/initialSightings';
-import { INITIAL_OBSERVERS, INITIAL_SKYWATCHES, INITIAL_DISCUSSIONS } from '../data/communityData';
 
 const SIGHTINGS_COLLECTION = 'sightings';
 const OBSERVERS_COLLECTION = 'observers';
@@ -22,54 +19,86 @@ const SKYWATCHES_COLLECTION = 'groupSkywatches';
 const DISCUSSIONS_COLLECTION = 'discussions';
 
 /**
- * Seed initial field sightings to Firestore if collection is empty
+ * Legacy seeded / fake IDs and callsigns to filter out so the app starts 100% fresh
+ */
+const FAKE_SIGHTING_IDS = new Set([
+  'sgt-101', 'sgt-102', 'sgt-103', 'sgt-104', 'sgt-105', 'sgt-106',
+  'sgt-107', 'sgt-108', 'sgt-109', 'sgt-110', 'sgt-111', 'sgt-112',
+  'fallback-1', 'fallback-2', 'fallback-3'
+]);
+
+const FAKE_OBSERVER_IDS = new Set([
+  'obs-wessex-01', 'obs-wessex-02', 'obs-wessex-03', 'obs-wessex-04', 'obs-fowlmere-01'
+]);
+
+const FAKE_CALLSIGNS = new Set([
+  'DOWNS-ALPHA',
+  'RIDGEWAY-EAGLE',
+  'BARBURY-WATCH',
+  'WESSEX-SCOUT-07',
+  'CHALK-THERMAL-99',
+  'CHILTERN-KESTREL',
+  'PLAIN-WATCHER',
+  'AVEBURY-KESTREL',
+  'FYFIELD-HARRIER',
+  'FOWLMERE-SCOUT',
+  'OGBOURNE-BUZZARD',
+  'CHILTERN-KITE-01',
+  'KITE-WATCHER-07',
+  'RIDGEWAY-VANGUARD'
+]);
+
+const FAKE_SKYWATCH_IDS = new Set([
+  'skywatch-01', 'skywatch-02', 'skywatch-03',
+  'skywatch-2026-11', 'skywatch-2026-12',
+  'skywatch-2027-01', 'skywatch-2027-02', 'skywatch-2027-03', 'skywatch-2027-04', 'skywatch-2027-05'
+]);
+
+const FAKE_DISCUSSION_IDS = new Set([
+  'disc-01', 'disc-02', 'disc-03'
+]);
+
+export function isFakeSighting(s: SightingLog): boolean {
+  if (!s || !s.id) return true;
+  if (FAKE_SIGHTING_IDS.has(s.id) || /^sgt-1\d\d$/.test(s.id)) return true;
+  if (s.observerCallsign && FAKE_CALLSIGNS.has(s.observerCallsign.toUpperCase())) return true;
+  return false;
+}
+
+export function isFakeObserver(o: ObserverProfile): boolean {
+  if (!o || !o.id) return true;
+  if (FAKE_OBSERVER_IDS.has(o.id) || o.id.startsWith('sim-obs-')) return true;
+  if (o.callsign && FAKE_CALLSIGNS.has(o.callsign.toUpperCase())) return true;
+  if (o.joinedDate && o.joinedDate.includes('Simulated')) return true;
+  return false;
+}
+
+export function isFakeSkywatch(w: GroupSkywatch): boolean {
+  if (!w || !w.id) return true;
+  return FAKE_SKYWATCH_IDS.has(w.id);
+}
+
+export function isFakeDiscussion(d: CommunityDiscussion): boolean {
+  if (!d || !d.id) return true;
+  return FAKE_DISCUSSION_IDS.has(d.id);
+}
+
+/**
+ * Disabled automatic fake seeding so the app starts completely fresh
  */
 export async function seedSightingsIfEmpty(): Promise<void> {
-  try {
-    const colRef = collection(db, SIGHTINGS_COLLECTION);
-    const snap = await getDocs(query(colRef, limit(1)));
-    if (snap.empty) {
-      for (const sighting of INITIAL_SIGHTINGS.slice(0, 15)) {
-        await setDoc(doc(db, SIGHTINGS_COLLECTION, sighting.id), sighting);
-      }
-    }
-  } catch (err) {
-    console.error('Error checking or seeding sightings in Firestore:', err);
-  }
+  // No-op: fake sightings seeding disabled
 }
 
 /**
- * Seed initial community observers, skywatches, and discussions if empty
+ * Disabled automatic fake community seeding so the app starts completely fresh
  */
 export async function seedCommunityIfEmpty(): Promise<void> {
-  try {
-    const obsSnap = await getDocs(query(collection(db, OBSERVERS_COLLECTION), limit(1)));
-    if (obsSnap.empty) {
-      for (const obs of INITIAL_OBSERVERS) {
-        await setDoc(doc(db, OBSERVERS_COLLECTION, obs.id), obs);
-      }
-    }
-
-    const skySnap = await getDocs(query(collection(db, SKYWATCHES_COLLECTION), limit(1)));
-    if (skySnap.empty) {
-      for (const sky of INITIAL_SKYWATCHES) {
-        await setDoc(doc(db, SKYWATCHES_COLLECTION, sky.id), sky);
-      }
-    }
-
-    const discSnap = await getDocs(query(collection(db, DISCUSSIONS_COLLECTION), limit(1)));
-    if (discSnap.empty) {
-      for (const disc of INITIAL_DISCUSSIONS) {
-        await setDoc(doc(db, DISCUSSIONS_COLLECTION, disc.id), disc);
-      }
-    }
-  } catch (err) {
-    console.warn('Error seeding community collections in Firestore:', err);
-  }
+  // No-op: fake community seeding disabled
 }
 
 /**
- * Subscribe to real-time sighting updates from Firestore
+ * Subscribe to real-time sighting updates from Firestore (excluding legacy seeded records)
  */
 export function subscribeToSightings(
   callback: (sightings: SightingLog[]) => void,
@@ -86,22 +115,24 @@ export function subscribeToSightings(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
-          const list: SightingLog[] = snapshot.docs.map((docSnap) => docSnap.data() as SightingLog);
+          const list: SightingLog[] = snapshot.docs
+            .map((docSnap) => docSnap.data() as SightingLog)
+            .filter((s) => !isFakeSighting(s));
           callback(list);
         } else {
-          callback(fallbackData);
+          callback(fallbackData.filter((s) => !isFakeSighting(s)));
         }
       },
       (error) => {
         console.warn('Firestore subscription warning, falling back to local memory:', error);
-        callback(fallbackData);
+        callback(fallbackData.filter((s) => !isFakeSighting(s)));
       }
     );
 
     return unsubscribe;
   } catch (err) {
     console.error('Failed to create Firestore subscription:', err);
-    callback(fallbackData);
+    callback(fallbackData.filter((s) => !isFakeSighting(s)));
     return () => {};
   }
 }
@@ -140,7 +171,7 @@ export async function addCorroborationToFirestore(
 }
 
 /**
- * Subscribe to real-time community observers from Firestore
+ * Subscribe to real-time community observers from Firestore (excluding legacy seeded/simulated sign-ups)
  */
 export function subscribeToObservers(
   callback: (observers: ObserverProfile[]) => void,
@@ -152,16 +183,18 @@ export function subscribeToObservers(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
-          const list: ObserverProfile[] = snapshot.docs.map((d) => d.data() as ObserverProfile);
+          const list: ObserverProfile[] = snapshot.docs
+            .map((d) => d.data() as ObserverProfile)
+            .filter((o) => !isFakeObserver(o));
           callback(list);
         } else {
-          callback(fallbackData);
+          callback(fallbackData.filter((o) => !isFakeObserver(o)));
         }
       },
-      () => callback(fallbackData)
+      () => callback(fallbackData.filter((o) => !isFakeObserver(o)))
     );
   } catch {
-    callback(fallbackData);
+    callback(fallbackData.filter((o) => !isFakeObserver(o)));
     return () => {};
   }
 }
@@ -177,7 +210,7 @@ export async function saveObserverToFirestore(observer: ObserverProfile): Promis
 }
 
 /**
- * Subscribe to real-time group skywatches from Firestore
+ * Subscribe to real-time group skywatches from Firestore (excluding legacy seeded records)
  */
 export function subscribeToSkywatches(
   callback: (skywatches: GroupSkywatch[]) => void,
@@ -189,16 +222,18 @@ export function subscribeToSkywatches(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
-          const list: GroupSkywatch[] = snapshot.docs.map((d) => d.data() as GroupSkywatch);
+          const list: GroupSkywatch[] = snapshot.docs
+            .map((d) => d.data() as GroupSkywatch)
+            .filter((w) => !isFakeSkywatch(w));
           callback(list);
         } else {
-          callback(fallbackData);
+          callback(fallbackData.filter((w) => !isFakeSkywatch(w)));
         }
       },
-      () => callback(fallbackData)
+      () => callback(fallbackData.filter((w) => !isFakeSkywatch(w)))
     );
   } catch {
-    callback(fallbackData);
+    callback(fallbackData.filter((w) => !isFakeSkywatch(w)));
     return () => {};
   }
 }
@@ -213,7 +248,7 @@ export async function saveSkywatchToFirestore(skywatch: GroupSkywatch): Promise<
 }
 
 /**
- * Subscribe to real-time community forum discussions from Firestore
+ * Subscribe to real-time community forum discussions from Firestore (excluding legacy seeded threads)
  */
 export function subscribeToDiscussions(
   callback: (discussions: CommunityDiscussion[]) => void,
@@ -225,16 +260,18 @@ export function subscribeToDiscussions(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
-          const list: CommunityDiscussion[] = snapshot.docs.map((d) => d.data() as CommunityDiscussion);
+          const list: CommunityDiscussion[] = snapshot.docs
+            .map((d) => d.data() as CommunityDiscussion)
+            .filter((disc) => !isFakeDiscussion(disc));
           callback(list);
         } else {
-          callback(fallbackData);
+          callback(fallbackData.filter((disc) => !isFakeDiscussion(disc)));
         }
       },
-      () => callback(fallbackData)
+      () => callback(fallbackData.filter((disc) => !isFakeDiscussion(disc)))
     );
   } catch {
-    callback(fallbackData);
+    callback(fallbackData.filter((disc) => !isFakeDiscussion(disc)));
     return () => {};
   }
 }
@@ -319,6 +356,7 @@ export async function saveStationStreamConfigToFirestore(config: {
         callsign: config.callsign || 'STATION-OPERATOR',
         count: 1,
         timestamp: new Date().toISOString(),
+        verified: true,
       },
       { merge: true }
     );
@@ -326,5 +364,3 @@ export async function saveStationStreamConfigToFirestore(config: {
     console.warn('Could not sync station stream config to Firestore:', err);
   }
 }
-
-

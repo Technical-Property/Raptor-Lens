@@ -269,50 +269,6 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
     showToast('✓ Telemetry and roster downloaded (JSON)');
   };
 
-  // Simulate a test observer sign-up to prove live reactivity
-  const handleSimulateSignUp = () => {
-    tacticalAudio.playConfirmChime();
-    const presets = [
-      { callsign: `MARLBOROUGH-RED-${Math.floor(10 + Math.random() * 89)}`, name: 'David Henshaw', hotspot: 'Barbury Castle Country Park', level: 'Seasoned Chalkland Scout', optics: 'Vortex Viper HD 10x42' },
-      { callsign: `CHILTERN-KESTREL-${Math.floor(10 + Math.random() * 89)}`, name: 'Eleanor Vance', hotspot: 'Ivinghoe Beacon', level: 'Intermediate Field Spotter', optics: 'Nikon Monarch M7 8x42' },
-      { callsign: `DOWNS-OWL-${Math.floor(10 + Math.random() * 89)}`, name: 'Simon Broadbent', hotspot: 'Hackpen Hill & White Horse', level: 'Raptor Specialist / BTO Ringer', optics: 'Swarovski EL 8.5x42' },
-      { callsign: `CHALK-HARRIER-${Math.floor(10 + Math.random() * 89)}`, name: 'Hannah O\'Reilly', hotspot: 'Fyfield Down Nature Reserve', level: 'Downland Walker & Nature Photographer', optics: 'Leica Ultravid 10x42' },
-    ];
-    const pick = presets[Math.floor(Math.random() * presets.length)];
-    const newSimProfile: ObserverProfile = {
-      id: `sim-obs-${Date.now()}`,
-      callsign: pick.callsign,
-      fullName: pick.name,
-      badge: 'Chalkland Thermal Scout',
-      experienceLevel: pick.level as ExperienceLevel,
-      yearsExperience: Math.floor(2 + Math.random() * 8),
-      affiliation: 'Downland Field Observer',
-      specialties: ['Flight Silhouette Identification', 'Thermal Soaring Dynamics'],
-      homeHotspot: pick.hotspot,
-      hotspotId: 'barbury-castle',
-      sightingsCount: 1,
-      verified: true,
-      isHumanVerified: true,
-      opticsGear: pick.optics,
-      bio: 'Regular observer tracking Wiltshire scarp raptor movements and soaring flights.',
-      joinedDate: 'Just now (Simulated)',
-      avatarColor: 'from-amber-600 to-amber-800',
-    };
-
-    if (onAddObserver) {
-      onAddObserver(newSimProfile);
-    }
-
-    const evt = trackEvent('observer_registered', `Test Sign-up: ${pick.callsign} (${pick.name})`, {
-      callsign: pick.callsign,
-      experienceLevel: pick.level,
-      simulated: true,
-    });
-    setEvents((prev) => [evt, ...prev]);
-
-    showToast(`✓ Simulated sign-up added: ${pick.callsign}`);
-  };
-
   const handleClearTelemetryCache = () => {
     if (window.confirm('Reset local telemetry events cache? (Observer roster and sightings will remain untouched).')) {
       tacticalAudio.playRadarPing(600);
@@ -634,23 +590,29 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       </div>
 
                       <div className="space-y-2.5 pt-1">
-                        {Object.entries(experienceBreakdown).map(([lvl, count]) => {
-                          const pct = Math.round((count / observers.length) * 100);
-                          return (
-                            <div key={lvl} className="space-y-1">
-                              <div className="flex items-center justify-between text-xs font-mono-tactical">
-                                <span className="text-neutral-300 truncate max-w-[240px]">{lvl}</span>
-                                <span className="text-amber-400 font-bold">{count} ({pct}%)</span>
+                        {observers.length === 0 ? (
+                          <div className="p-4 text-center text-xs font-mono-tactical text-neutral-500 border border-dashed border-neutral-800 rounded-lg">
+                            No observers registered yet. Real user sign-ups will appear here.
+                          </div>
+                        ) : (
+                          Object.entries(experienceBreakdown).map(([lvl, count]) => {
+                            const pct = Math.round((count / observers.length) * 100);
+                            return (
+                              <div key={lvl} className="space-y-1">
+                                <div className="flex items-center justify-between text-xs font-mono-tactical">
+                                  <span className="text-neutral-300 truncate max-w-[240px]">{lvl}</span>
+                                  <span className="text-amber-400 font-bold">{count} ({pct}%)</span>
+                                </div>
+                                <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full" 
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
                               </div>
-                              <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full" 
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        )}
                       </div>
                     </div>
 
@@ -710,17 +672,23 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       </h4>
 
                       <div className="space-y-2 pt-1">
-                        {topSpeciesList.map(([species, count], idx) => (
-                          <div key={species} className="flex items-center justify-between p-2 rounded-lg bg-neutral-950/70 border border-neutral-850 text-xs font-mono-tactical">
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-md bg-neutral-850 text-neutral-400 flex items-center justify-center text-[10px] font-bold">
-                                #{idx + 1}
-                              </span>
-                              <span className="text-neutral-200 font-semibold">{species}</span>
-                            </div>
-                            <span className="text-amber-400 font-bold">{count} birds logged</span>
+                        {topSpeciesList.length === 0 ? (
+                          <div className="p-4 text-center text-xs font-mono-tactical text-neutral-500 border border-dashed border-neutral-800 rounded-lg">
+                            No sightings logged yet. Real community sightings will appear here.
                           </div>
-                        ))}
+                        ) : (
+                          topSpeciesList.map(([species, count], idx) => (
+                            <div key={species} className="flex items-center justify-between p-2 rounded-lg bg-neutral-950/70 border border-neutral-850 text-xs font-mono-tactical">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-md bg-neutral-850 text-neutral-400 flex items-center justify-center text-[10px] font-bold">
+                                  #{idx + 1}
+                                </span>
+                                <span className="text-neutral-200 font-semibold">{species}</span>
+                              </div>
+                              <span className="text-amber-400 font-bold">{count} birds logged</span>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
 
@@ -818,41 +786,49 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-850">
-                          {filteredObservers.map((obs) => (
-                            <tr key={obs.id} className="hover:bg-neutral-850/50 transition-colors">
-                              <td className="py-2.5 px-3 font-bold text-amber-300">
-                                {obs.callsign}
-                              </td>
-                              <td className="py-2.5 px-3 text-neutral-200">
-                                {obs.fullName}
-                                {obs.affiliation && (
-                                  <div className="text-[10px] text-neutral-500">{obs.affiliation}</div>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] bg-neutral-800 text-neutral-300 border border-neutral-750">
-                                  {obs.badge || 'Field Observer'}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-3 text-neutral-300">
-                                {obs.homeHotspot}
-                              </td>
-                              <td className="py-2.5 px-3 text-neutral-400 text-[11px]">
-                                {obs.opticsGear || 'Standard Optics'}
-                              </td>
-                              <td className="py-2.5 px-3 text-amber-400 font-bold">
-                                {obs.sightingsCount}
-                              </td>
-                              <td className="py-2.5 px-3 text-neutral-400 text-[11px]">
-                                {obs.joinedDate}
-                              </td>
-                              <td className="py-2.5 px-3 text-right">
-                                <span className="inline-flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
-                                  <Check className="w-3 h-3" /> VERIFIED
-                                </span>
+                          {filteredObservers.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="py-8 px-4 text-center text-neutral-500">
+                                No registered observers yet. All fake sign-ups have been cleared — real community registrations will appear here.
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            filteredObservers.map((obs) => (
+                              <tr key={obs.id} className="hover:bg-neutral-850/50 transition-colors">
+                                <td className="py-2.5 px-3 font-bold text-amber-300">
+                                  {obs.callsign}
+                                </td>
+                                <td className="py-2.5 px-3 text-neutral-200">
+                                  {obs.fullName}
+                                  {obs.affiliation && (
+                                    <div className="text-[10px] text-neutral-500">{obs.affiliation}</div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className="px-2 py-0.5 rounded text-[10px] bg-neutral-800 text-neutral-300 border border-neutral-750">
+                                    {obs.badge || 'Field Observer'}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-neutral-300">
+                                  {obs.homeHotspot}
+                                </td>
+                                <td className="py-2.5 px-3 text-neutral-400 text-[11px]">
+                                  {obs.opticsGear || 'Standard Optics'}
+                                </td>
+                                <td className="py-2.5 px-3 text-amber-400 font-bold">
+                                  {obs.sightingsCount}
+                                </td>
+                                <td className="py-2.5 px-3 text-neutral-400 text-[11px]">
+                                  {obs.joinedDate}
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className="inline-flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+                                    <Check className="w-3 h-3" /> VERIFIED
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>

@@ -2368,59 +2368,29 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
 
               <div className="space-y-2">
-                {(sightings.length > 0
-                  ? sightings.slice(0, 6).map((s) => ({
-                      id: s.id,
-                      species: s.speciesName,
-                      count: s.count,
-                      loc: s.locationName,
-                      time: `${s.date} ${s.time}`,
-                      notes: s.notes,
-                      scout: s.observerCallsign,
-                    }))
-                  : [
-                      {
-                        id: 'fallback-1',
-                        species: 'Red Kite',
-                        count: 4,
-                        loc: 'Barbury Fort View (Ramparts)',
-                        time: '18 mins ago',
-                        notes: 'Kettling in strong slope updraft over Iron Age ditch.',
-                        scout: 'DOWNS-ALPHA',
-                      },
-                      {
-                        id: 'fallback-2',
-                        species: 'Common Kestrel',
-                        count: 1,
-                        loc: 'Hackpen Hill View',
-                        time: '42 mins ago',
-                        notes: 'Head-to-wind hovering at 15m surveying chalk turf for voles.',
-                        scout: 'RIDGEWAY-SCOUT',
-                      },
-                      {
-                        id: 'fallback-3',
-                        species: 'Common Buzzard',
-                        count: 2,
-                        loc: 'Perch View (Sarsen Post)',
-                        time: '1 hr ago',
-                        notes: 'Perched together on fence line drying feathers in breeze.',
-                        scout: 'CHALK-WATCH',
-                      },
-                    ]
-                ).map((item) => (
-                  <div key={item.id} className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-neutral-100 font-bold">
-                        {item.count}x {item.species} <span className="text-[10px] text-amber-400 font-normal">({item.loc})</span>
+                {sightings.length > 0 ? (
+                  sightings.slice(0, 6).map((s) => (
+                    <div key={s.id} className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-neutral-100 font-bold">
+                          {s.count}x {s.speciesName} <span className="text-[10px] text-amber-400 font-normal">({s.locationName})</span>
+                        </div>
+                        <div className="text-[11px] text-neutral-400 font-sans mt-0.5">{s.notes}</div>
                       </div>
-                      <div className="text-[11px] text-neutral-400 font-sans mt-0.5">{item.notes}</div>
+                      <div className="text-right shrink-0">
+                        <div className="text-neutral-400 text-[10px]">{s.date} {s.time}</div>
+                        <div className="text-emerald-400 text-[10px] font-bold">{s.observerCallsign}</div>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-neutral-400 text-[10px]">{item.time}</div>
-                      <div className="text-emerald-400 text-[10px] font-bold">{item.scout}</div>
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-xl bg-neutral-900/40 border border-dashed border-neutral-800 text-center space-y-2">
+                    <div className="text-neutral-300 font-bold text-xs">No sightings logged yet</div>
+                    <p className="text-[11px] text-neutral-400 font-sans">
+                      Fake sample sightings have been cleared so the station starts fresh. Spot a bird on the live cam or trail and click <strong>+ Add Sighting Report</strong> to log the first real sighting!
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}

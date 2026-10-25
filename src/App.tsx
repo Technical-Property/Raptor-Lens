@@ -55,11 +55,40 @@ import {
   subscribeToSkywatches,
   saveSkywatchToFirestore,
   subscribeToDiscussions,
-  saveDiscussionToFirestore
+  saveDiscussionToFirestore,
+  isFakeSighting,
+  isFakeObserver,
+  isFakeSkywatch,
+  isFakeDiscussion
 } from './services/sightingsFirestore';
 import { validateFirestoreConnection } from './services/firebase';
 
+const CLEAN_SLATE_MIGRATION_KEY = 'raptorlens_clean_slate_v1';
+
+function ensureCleanSlateStorage() {
+  try {
+    if (localStorage.getItem(CLEAN_SLATE_MIGRATION_KEY) !== 'done') {
+      localStorage.removeItem('raptorlens_sightings');
+      localStorage.removeItem('raptorlens_observers');
+      localStorage.removeItem('raptorlens_skywatches');
+      localStorage.removeItem('raptorlens_discussions');
+      localStorage.removeItem('raptorlens_dispatches');
+      localStorage.removeItem('raptorlens_analytics_events');
+      localStorage.removeItem('raptorlens_beta_feedback');
+      const existingCallsign = localStorage.getItem('raptorlens_callsign');
+      if (existingCallsign === 'WESSEX-SCOUT-07') {
+        localStorage.removeItem('raptorlens_callsign');
+      }
+      localStorage.setItem(CLEAN_SLATE_MIGRATION_KEY, 'done');
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export default function App() {
+  ensureCleanSlateStorage();
+
   const [activeTab, setActiveTab] = useState<NavTab>('dispatches');
   const [perspectiveMode, setPerspectiveMode] = useState<PerspectiveMode>(() => {
     try {
@@ -147,17 +176,21 @@ export default function App() {
   // Current Observer identity
   const [currentCallsign, setCurrentCallsign] = useState<string>(() => {
     try {
-      return localStorage.getItem('raptorlens_callsign') || 'WESSEX-SCOUT-07';
+      const saved = localStorage.getItem('raptorlens_callsign');
+      if (saved && saved !== 'WESSEX-SCOUT-07') return saved;
+      return 'GUEST-SCOUT';
     } catch {
-      return 'WESSEX-SCOUT-07';
+      return 'GUEST-SCOUT';
     }
   });
 
-  // Community state with localStorage persistence
+  // Community state with localStorage persistence (filtered against any legacy fake records)
   const [observers, setObservers] = useState<ObserverProfile[]>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_observers');
-      return saved ? JSON.parse(saved) : INITIAL_OBSERVERS;
+      if (!saved) return INITIAL_OBSERVERS;
+      const parsed: ObserverProfile[] = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter((o) => !isFakeObserver(o)) : INITIAL_OBSERVERS;
     } catch {
       return INITIAL_OBSERVERS;
     }
@@ -168,16 +201,8 @@ export default function App() {
       const saved = localStorage.getItem('raptorlens_skywatches');
       if (saved) {
         const parsed: GroupSkywatch[] = JSON.parse(saved);
-        // Automatically purge old September meetups or outdated IDs
-        const hasOutdated = parsed.some(
-          (w) =>
-            w.id === 'skywatch-01' ||
-            w.id === 'skywatch-02' ||
-            w.id === 'skywatch-03' ||
-            w.date.includes('Sept')
-        );
-        if (!hasOutdated && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((w) => !isFakeSkywatch(w));
         }
       }
       return INITIAL_SKYWATCHES;
@@ -189,7 +214,9 @@ export default function App() {
   const [discussions, setDiscussions] = useState<CommunityDiscussion[]>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_discussions');
-      return saved ? JSON.parse(saved) : INITIAL_DISCUSSIONS;
+      if (!saved) return INITIAL_DISCUSSIONS;
+      const parsed: CommunityDiscussion[] = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter((d) => !isFakeDiscussion(d)) : INITIAL_DISCUSSIONS;
     } catch {
       return INITIAL_DISCUSSIONS;
     }
@@ -199,21 +226,13 @@ export default function App() {
   const [sightings, setSightings] = useState<SightingLog[]>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_sightings');
-      let baseSightings: SightingLog[] = INITIAL_SIGHTINGS;
       if (saved) {
-        try {
-          const parsed: SightingLog[] = JSON.parse(saved);
-          const filtered = parsed.filter(
-            (s) => s.speciesId === 'red-kite' || s.speciesId === 'common-buzzard'
-          );
-          if (filtered.length > 0) {
-            baseSightings = filtered;
-          }
-        } catch {
-          baseSightings = INITIAL_SIGHTINGS;
+        const parsed: SightingLog[] = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((s) => !isFakeSighting(s));
         }
       }
-      return baseSightings;
+      return INITIAL_SIGHTINGS;
     } catch {
       return INITIAL_SIGHTINGS;
     }
@@ -232,7 +251,6 @@ export default function App() {
       const ok = await validateFirestoreConnection();
       setIsFirestoreConnected(ok);
       if (ok) {
-        // Seed initial sightings and community records if empty so Firestore is immediately populated
         await seedSightingsIfEmpty();
         await seedCommunityIfEmpty();
       }
@@ -298,7 +316,11 @@ export default function App() {
   const [dispatches, setDispatches] = useState<RssDispatch[]>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_dispatches');
-      return saved ? JSON.parse(saved) : INITIAL_DISPATCHES;
+      if (!saved) return INITIAL_DISPATCHES;
+      const parsed: RssDispatch[] = JSON.parse(saved);
+      return Array.isArray(parsed)
+        ? parsed.filter((d) => d && typeof d.id === 'string' && !/^disp-00\d$/.test(d.id))
+        : INITIAL_DISPATCHES;
     } catch {
       return INITIAL_DISPATCHES;
     }
