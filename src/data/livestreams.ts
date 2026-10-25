@@ -12,8 +12,8 @@ export const LIVESTREAM_CHANNELS: LivestreamCam[] = [
     title: 'RaptorLens UK Downland & Summit Live Cam (4K Optical)',
     location: 'Wessex Escarpment / Downland Roost (Facing Barbury Airspace)',
     channelName: 'RaptorLens UK Live Station',
-    youtubeId: 'D9NvW7EA1B0', // Official RaptorLens UK Live Stream
-    channelUrl: 'https://youtube.com/live/D9NvW7EA1B0',
+    youtubeId: '36w5VpxTmtk', // Official RaptorLens UK Live Stream
+    channelUrl: 'https://youtube.com/live/36w5VpxTmtk',
     status: 'LIVE',
     description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View to track downland raptors and live ridge weather.',
     elevation: '268m ASL (Barbury & Hackpen Sector)',

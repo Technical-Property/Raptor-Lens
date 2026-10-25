@@ -248,3 +248,83 @@ export async function saveDiscussionToFirestore(discussion: CommunityDiscussion)
   }
 }
 
+export interface StationStreamConfig {
+  videoId: string;
+  channelUrl?: string;
+  channelId?: string;
+  mode?: 'video' | 'channel';
+  updatedAt: string;
+}
+
+const SPOTTER_REPORTS_COLLECTION = 'spotterReports';
+const STATION_CONFIG_DOC_ID = 'station-live-config';
+
+/**
+ * Subscribe to the globally synced Station Live Stream configuration in Firestore
+ * so when the station operator pastes a new YouTube Live URL or Channel ID in the app,
+ * it automatically updates across all devices and visitors in real time.
+ */
+export function subscribeToStationStreamConfig(
+  callback: (config: StationStreamConfig) => void
+): () => void {
+  try {
+    const docRef = doc(db, SPOTTER_REPORTS_COLLECTION, STATION_CONFIG_DOC_ID);
+    return onSnapshot(
+      docRef,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && typeof data.camId === 'string' && data.camId.trim()) {
+            callback({
+              videoId: data.camId.trim(),
+              channelUrl: typeof data.channelUrl === 'string' ? data.channelUrl : `https://youtube.com/live/${data.camId.trim()}`,
+              channelId: typeof data.channelId === 'string' ? data.channelId : undefined,
+              mode: data.mode === 'channel' ? 'channel' : 'video',
+              updatedAt: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString(),
+            });
+          }
+        }
+      },
+      (err) => {
+        console.warn('Station stream config listener fallback to local:', err);
+      }
+    );
+  } catch {
+    return () => {};
+  }
+}
+
+/**
+ * Save the active Station Live Stream Video ID / Channel ID to Firestore
+ * (stored in spotterReports/station-live-config to adhere to existing Firestore security rules).
+ */
+export async function saveStationStreamConfigToFirestore(config: {
+  videoId: string;
+  channelUrl?: string;
+  channelId?: string;
+  mode?: 'video' | 'channel';
+  callsign?: string;
+}): Promise<void> {
+  try {
+    const docRef = doc(db, SPOTTER_REPORTS_COLLECTION, STATION_CONFIG_DOC_ID);
+    await setDoc(
+      docRef,
+      {
+        id: STATION_CONFIG_DOC_ID,
+        camId: config.videoId.trim(),
+        channelUrl: config.channelUrl || `https://youtube.com/live/${config.videoId.trim()}`,
+        channelId: config.channelId || '',
+        mode: config.mode || 'video',
+        speciesName: 'Station Cam Live Sync',
+        callsign: config.callsign || 'STATION-OPERATOR',
+        count: 1,
+        timestamp: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Could not sync station stream config to Firestore:', err);
+  }
+}
+
+

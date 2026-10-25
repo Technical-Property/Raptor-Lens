@@ -47,13 +47,16 @@ import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER, PtzPreset, BarburySummitWe
 import { EducationalCamIdModal } from './EducationalCamIdModal';
 import { StationCamOperatorGuideModal } from './StationCamOperatorGuideModal';
 import { fetchLiveBarburyWeather } from '../services/weatherService';
+import { subscribeToStationStreamConfig, saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
 import { 
   extractYouTubeVideoId, 
   extractYouTubeChannelInfo, 
   getYouTubeChannelUrl, 
   buildYouTubeEmbedSrc,
+  checkYouTubeVideoEmbeddable,
   StreamPlayMode,
   DEFAULT_CAMERA_VIDEO_ID,
+  CHALKTECH_VERIFIED_EMBED_ID,
   DEMO_NATURE_VIDEO_ID
 } from '../utils/youtube';
 
@@ -91,16 +94,16 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [selectedChannelId, setSelectedChannelId] = useState<string>(channels[0]?.id || 'stream-barbury-castle-livecam');
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
-      const migrated = localStorage.getItem('raptorlens_stream_migration_v4');
+      const migrated = localStorage.getItem('raptorlens_stream_migration_v5');
       if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
-        localStorage.setItem('raptorlens_stream_migration_v4', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_stream_migration_v5', DEFAULT_CAMERA_VIDEO_ID);
         localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
         localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
         localStorage.setItem('raptorlens_stream_mode', 'video');
         return DEFAULT_CAMERA_VIDEO_ID;
       }
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ') return DEFAULT_CAMERA_VIDEO_ID;
+      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === 'D9NvW7EA1B0') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
     } catch {
       return DEFAULT_CAMERA_VIDEO_ID;
@@ -109,7 +112,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_channel_url') || '';
-      if (!saved || saved.includes('wUmvCR2YBMQ')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
+      if (!saved || saved.includes('wUmvCR2YBMQ') || saved.includes('D9NvW7EA1B0')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
       return saved;
     } catch {
       return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
@@ -127,6 +130,18 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
   const [showIpCamHelp, setShowIpCamHelp] = useState<boolean>(false);
   const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToStationStreamConfig((config) => {
+      if (config.videoId) {
+        setCustomVideoId(config.videoId);
+        if (config.channelUrl) {
+          setCustomChannelInput(config.channelUrl);
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     try {
@@ -250,12 +265,34 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [newDispatchPriority, setNewDispatchPriority] = useState<'CRITICAL' | 'HIGH' | 'NORMAL'>('HIGH');
   const [newDispatchHotspot, setNewDispatchHotspot] = useState('barbury-castle');
 
+  const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const currentChannel = channels.find((c) => c.id === selectedChannelId) || channels[0];
   const activeVideoId = customVideoId.trim() || currentChannel.youtubeId;
+
+  useEffect(() => {
+    let isMounted = true;
+    const verifyEmbed = async () => {
+      if (!activeVideoId || isLocalIpAddress(activeVideoId)) return;
+      const ok = await checkYouTubeVideoEmbeddable(activeVideoId);
+      if (isMounted) setIsPrimaryEmbedBlocked(!ok);
+    };
+    verifyEmbed();
+    const timer = setInterval(verifyEmbed, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [activeVideoId]);
+
+  const effectiveEmbedVideoId =
+    isPrimaryEmbedBlocked && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
+      ? CHALKTECH_VERIFIED_EMBED_ID
+      : activeVideoId;
+
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentChannel.channelUrl || '');
   const resolvedChannelUrl = getYouTubeChannelUrl(customChannelInput || currentChannel.channelUrl, activeVideoId);
   const activeEmbedSrc = buildYouTubeEmbedSrc({
-    videoId: activeVideoId,
+    videoId: effectiveEmbedVideoId,
     channelId: channelInfo.channelId,
     mode: streamMode,
   });
@@ -1157,6 +1194,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                     : ''
                 }`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
               />
             )}

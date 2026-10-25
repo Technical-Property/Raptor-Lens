@@ -5,16 +5,38 @@
  */
 
 // Verified 24/7 active live raptor & wildlife streams
-export const DEFAULT_CAMERA_VIDEO_ID = 'D9NvW7EA1B0'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
-export const RAPTORLENS_STATION_VIDEO_ID = 'D9NvW7EA1B0'; // Official RaptorLens UK Live Cam
+export const CHALKTECH_CHANNEL_ID = 'UCIndyyYl6gizIAxgLXAfVyw'; // Official @chalktech YouTube Channel ID
+export const CHALKTECH_LIVE_STREAM_ID = '36w5VpxTmtk'; // Current active @chalktech live broadcast
+export const CHALKTECH_VERIFIED_EMBED_ID = 'D9NvW7EA1B0'; // Verified embed-enabled @chalktech Hackpen Hill & Barbury Castle stream
+export const DEFAULT_CAMERA_VIDEO_ID = '36w5VpxTmtk'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
+export const RAPTORLENS_STATION_VIDEO_ID = '36w5VpxTmtk'; // Official RaptorLens UK Live Cam
 export const UK_OWL_KESTREL_VIDEO_ID = 'q28Q9_qzqyg'; // Robert E Fuller UK Barn Owl, Kestrel & Tawny Owl Live Cam
 export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon Cam 1
 export const OSPREY_UK_VIDEO_ID = 'V08ET209nvU';       // Rutland Osprey Project (Manton Bay, UK) Live Cam
 export const EAGLE_LIVE_VIDEO_ID = 'B4-L2nfGcuE';      // Big Bear Bald Eagle Live Nest (Cam 1)
 export const EAGLE_WIDE_VIDEO_ID = '41eq4VzCYc4';      // Big Bear Bald Eagle Wide Lookout (Cam 2)
 export const CORNELL_FEEDER_VIDEO_ID = 'x10vL6_47Dw';  // Cornell Lab Live FeederWatch
-export const DEMO_NATURE_VIDEO_ID = 'B4-L2nfGcuE';     // Fallback verified stream
+export const DEMO_NATURE_VIDEO_ID = 'D9NvW7EA1B0';     // Fallback verified @chalktech Barbury & Hackpen stream
 export const DEMO_LIVE_VIDEO_ID = '21X5lGlDOfg';       // NASA Earth Live HD broadcast
+
+/**
+ * Checks via YouTube's CORS-enabled oEmbed endpoint whether a given YouTube videoId
+ * has "Allow embedding" enabled (HTTP 200) vs disabled/private (HTTP 401/403/404).
+ */
+export async function checkYouTubeVideoEmbeddable(videoId: string): Promise<boolean> {
+  if (!videoId || /^UC[a-zA-Z0-9_-]{22}$/.test(videoId.trim())) {
+    return true;
+  }
+  try {
+    const cleanId = videoId.trim();
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(cleanId)}&format=json`
+    );
+    return res.ok;
+  } catch {
+    return true;
+  }
+}
 
 export interface CameraPresetOption {
   id: string;
@@ -37,7 +59,7 @@ export const POPULAR_CAMERA_PRESETS: CameraPresetOption[] = [
     badge: 'PRIMARY STATION',
     videoId: RAPTORLENS_STATION_VIDEO_ID,
     channelName: 'RaptorLens UK Official Broadcast',
-    channelUrl: 'https://youtube.com/live/D9NvW7EA1B0',
+    channelUrl: 'https://youtube.com/live/36w5VpxTmtk',
     species: 'Red Kite, Buzzard, Kestrel & Ridge Weather',
     location: 'Hackpen Hill • Barbury Fort • Field • Perch',
     description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View.',
@@ -141,7 +163,13 @@ export function extractYouTubeVideoId(input: string): string {
     return embedOrLiveMatch[1];
   }
 
-  // 5. If already an 11-char ID without path delimiters
+  // 5. Channel URL or raw Channel ID (UC + 22 chars = 24 chars) for permanent live_stream embeds:
+  const channelIdMatch = trimmed.match(/(?:youtube\.com\/channel\/|^)(UC[a-zA-Z0-9_-]{22})(?:[/?#]|$)/i);
+  if (channelIdMatch) {
+    return channelIdMatch[1];
+  }
+
+  // 6. If already an 11-char ID without path delimiters
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
     return trimmed;
   }
@@ -217,6 +245,9 @@ export function extractYouTubeChannelInfo(input: string): YouTubeChannelInfo {
  * Resolves the primary URL to open the YouTube Channel or stream directly.
  */
 export function getYouTubeChannelUrl(channelInput?: string, videoId: string = DEFAULT_CAMERA_VIDEO_ID): string {
+  if (videoId && /^UC[a-zA-Z0-9_-]{22}$/.test(videoId.trim())) {
+    return `https://www.youtube.com/channel/${videoId.trim()}/live`;
+  }
   if (channelInput && channelInput.trim()) {
     const info = extractYouTubeChannelInfo(channelInput);
     if (info.channelUrl) return info.channelUrl;
@@ -257,20 +288,22 @@ export function buildYouTubeEmbedSrc(options: {
   mode?: StreamPlayMode;
 }): string {
   const { videoId, channelId, mode = 'video' } = options;
-  const originParam =
-    typeof window !== 'undefined' && window.location?.origin
-      ? `&origin=${encodeURIComponent(window.location.origin)}`
-      : '';
 
   if (mode === 'demo') {
-    return `https://www.youtube.com/embed/${DEMO_NATURE_VIDEO_ID}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&loop=1&playlist=${DEMO_NATURE_VIDEO_ID}${originParam}`;
+    return `https://www.youtube.com/embed/${DEMO_NATURE_VIDEO_ID}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&loop=1&playlist=${DEMO_NATURE_VIDEO_ID}`;
   }
 
-  if (mode === 'channel' && channelId && channelId.startsWith('UC')) {
-    return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1${originParam}`;
+  const cleanVideoId = (videoId || DEFAULT_CAMERA_VIDEO_ID).trim();
+
+  // If cleanVideoId is a 24-char YouTube Channel ID (UC...), use the permanent channel live stream endpoint
+  if (/^UC[a-zA-Z0-9_-]{22}$/.test(cleanVideoId)) {
+    return `https://www.youtube.com/embed/live_stream?channel=${cleanVideoId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
-  const cleanVideoId = videoId || DEFAULT_CAMERA_VIDEO_ID;
-  return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1${originParam}`;
+  if (mode === 'channel' && channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim())) {
+    return `https://www.youtube.com/embed/live_stream?channel=${channelId.trim()}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
+
+  return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
 }
 

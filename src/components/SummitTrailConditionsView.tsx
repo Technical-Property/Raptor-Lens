@@ -47,6 +47,7 @@ import { LIVESTREAM_CHANNELS } from '../data/livestreams';
 import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER, BarburySummitWeather } from '../data/camPresets';
 import { RECOMMENDED_FIELD_KIT, buildAmazonUkAffiliateUrl } from '../data/affiliateKit';
 import { fetchLiveBarburyWeather } from '../services/weatherService';
+import { subscribeToStationStreamConfig, saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
 import { tacticalAudio } from '../utils/audio';
 import { SectorId } from '../types/sector';
 import { 
@@ -54,8 +55,10 @@ import {
   extractYouTubeChannelInfo, 
   getYouTubeChannelUrl, 
   buildYouTubeEmbedSrc,
+  checkYouTubeVideoEmbeddable,
   StreamPlayMode,
   DEFAULT_CAMERA_VIDEO_ID,
+  CHALKTECH_VERIFIED_EMBED_ID,
   DEMO_NATURE_VIDEO_ID,
   POPULAR_CAMERA_PRESETS,
   PEREGRINE_UK_VIDEO_ID,
@@ -90,11 +93,17 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 }) => {
   const currentCam = LIVESTREAM_CHANNELS[0];
   const [playerRefreshKey, setPlayerRefreshKey] = useState<number>(0);
+  const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(DEFAULT_CAMERA_VIDEO_ID);
+  const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
+  const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
+  const [quickLinkDraft, setQuickLinkDraft] = useState<string>('');
+  const [showQuickLinkBar, setShowQuickLinkBar] = useState<boolean>(false);
+  const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
-      const migrated = localStorage.getItem('raptorlens_stream_migration_v4');
+      const migrated = localStorage.getItem('raptorlens_stream_migration_v6');
       if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
-        localStorage.setItem('raptorlens_stream_migration_v4', DEFAULT_CAMERA_VIDEO_ID);
+        localStorage.setItem('raptorlens_stream_migration_v6', DEFAULT_CAMERA_VIDEO_ID);
         localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
         localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
         localStorage.setItem('raptorlens_stream_mode', 'video');
@@ -112,7 +121,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
     try {
       const savedUrl = localStorage.getItem('raptorlens_channel_url') || '';
-      if (!savedUrl || savedUrl.includes('wUmvCR2YBMQ')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
+      if (!savedUrl || savedUrl.includes('wUmvCR2YBMQ') || savedUrl.includes('D9NvW7EA1B0')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
       return savedUrl;
     } catch {
       return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
@@ -121,7 +130,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video' || saved === 'webcam') return saved;
+      if (saved === 'video' || saved === 'webcam' || saved === 'channel') return saved;
       return 'video';
     } catch {
       return 'video';
@@ -301,6 +310,61 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     } catch {}
   }, [streamMode]);
 
+  // Subscribe to real-time station stream config in Firestore so when operator updates the YouTube Live link, all visitors get it immediately
+  useEffect(() => {
+    const unsub = subscribeToStationStreamConfig((config) => {
+      if (config.videoId && !isRtmpStreamKeyOrUrl(config.videoId)) {
+        setStationPrimaryVideoId(config.videoId);
+        setCustomVideoId((prev) => {
+          // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
+          const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
+          if (!isGuestCam) {
+            return config.videoId;
+          }
+          return prev;
+        });
+        if (config.channelUrl) {
+          setCustomChannelInput(config.channelUrl);
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSyncStationStream = async (rawInput: string) => {
+    const trimmed = rawInput.trim();
+    if (!trimmed) return;
+    if (isRtmpStreamKeyOrUrl(trimmed)) {
+      setSyncSuccessToast('⚠ That is your secret RTMP Stream Key for Linux ffmpeg. Paste your public YouTube Live watch/share link instead!');
+      setTimeout(() => setSyncSuccessToast(null), 6000);
+      return;
+    }
+    const extractedId = extractYouTubeVideoId(trimmed);
+    if (!extractedId) return;
+
+    tacticalAudio.playConfirmChime();
+    const nextChannelUrl = /^UC[a-zA-Z0-9_-]{22}$/.test(extractedId)
+      ? `https://www.youtube.com/channel/${extractedId}/live`
+      : `https://youtube.com/live/${extractedId}`;
+
+    setStationPrimaryVideoId(extractedId);
+    setCustomVideoId(extractedId);
+    setCustomChannelInput(nextChannelUrl);
+    setStreamMode('video');
+    setPlayerRefreshKey((prev) => prev + 1);
+    setQuickLinkDraft('');
+    setShowQuickLinkBar(false);
+
+    await saveStationStreamConfigToFirestore({
+      videoId: extractedId,
+      channelUrl: nextChannelUrl,
+      callsign: currentCallsign,
+    });
+
+    setSyncSuccessToast(`✓ Live Stream synced to app (${extractedId})! Playing live now.`);
+    setTimeout(() => setSyncSuccessToast(null), 5000);
+  };
+
   // Live Open-Meteo Barbury / Hackpen Weather & Sunset Sync
   useEffect(() => {
     let isMounted = true;
@@ -321,11 +385,40 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     };
   }, []);
 
-  const activeVideoId = customVideoId.trim() || currentCam.youtubeId || DEFAULT_CAMERA_VIDEO_ID;
+  const activeVideoId = customVideoId.trim() || stationPrimaryVideoId || currentCam.youtubeId || DEFAULT_CAMERA_VIDEO_ID;
+  const isViewingPrimaryStation = activeVideoId === DEFAULT_CAMERA_VIDEO_ID || activeVideoId === stationPrimaryVideoId || activeVideoId === CHALKTECH_VERIFIED_EMBED_ID;
+
+  // Automatically check if YouTube has "Allow embedding" enabled on the target stream;
+  // If "Allow embedding" is unchecked (HTTP 401 on oEmbed), automatically play the verified @chalktech Barbury stream (D9NvW7EA1B0)
+  // while polling every 15s so it switches to 36w5VpxTmtk the instant "Allow embedding" is ticked in YouTube Studio!
+  useEffect(() => {
+    let isMounted = true;
+    const verifyEmbedStatus = async () => {
+      if (!activeVideoId || isLocalIpAddress(activeVideoId) || isRtmpStreamKeyOrUrl(activeVideoId)) {
+        return;
+      }
+      const embedOk = await checkYouTubeVideoEmbeddable(activeVideoId);
+      if (isMounted) {
+        setIsPrimaryEmbedBlocked(!embedOk);
+      }
+    };
+    verifyEmbedStatus();
+    const timer = setInterval(verifyEmbedStatus, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [activeVideoId, playerRefreshKey]);
+
+  const effectiveEmbedVideoId =
+    isPrimaryEmbedBlocked && !forceDirectLiveEmbed && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
+      ? CHALKTECH_VERIFIED_EMBED_ID
+      : activeVideoId;
+
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentCam.channelUrl || '');
   const resolvedChannelUrl = getYouTubeChannelUrl(customChannelInput || currentCam.channelUrl, activeVideoId);
   const activeEmbedSrc = buildYouTubeEmbedSrc({
-    videoId: activeVideoId,
+    videoId: effectiveEmbedVideoId,
     channelId: channelInfo.channelId,
     mode: streamMode,
   });
@@ -852,7 +945,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               type="button"
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
-                setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                setCustomVideoId(stationPrimaryVideoId);
                 setStreamMode('video');
                 setPlayerRefreshKey((prev) => prev + 1);
               }}
@@ -861,6 +954,23 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             >
               <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
               <span>Reload</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playRadarPing(840);
+                setShowQuickLinkBar((prev) => !prev);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors border ${
+                showQuickLinkBar
+                  ? 'bg-amber-500 text-neutral-950 border-amber-400 font-bold'
+                  : 'bg-neutral-800 hover:bg-neutral-750 text-amber-300 border-amber-500/40'
+              }`}
+              title="Paste your new YouTube Live link to update the app immediately"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Link New Stream</span>
             </button>
 
             <button
@@ -899,6 +1009,121 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </button>
           </div>
         </div>
+
+        {/* Instant 1-Click "Link New YouTube Stream" Sync Bar */}
+        {showQuickLinkBar && (
+          <div className="bg-neutral-900 border-b border-amber-500/40 px-3.5 sm:px-5 py-3 space-y-2 animate-fadeIn">
+            <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+              <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                <Video className="w-4 h-4 text-amber-400" />
+                <span>Paste Your Live YouTube Link (or Channel ID) to Update the App Instantly:</span>
+              </span>
+              <span className="text-[11px] text-neutral-400">
+                Current ID: <code className="text-emerald-400 font-mono">{activeVideoId}</code>
+              </span>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSyncStationStream(quickLinkDraft || customVideoId);
+              }}
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+            >
+              <input
+                type="text"
+                value={quickLinkDraft}
+                onChange={(e) => setQuickLinkDraft(e.target.value)}
+                placeholder="Paste https://youtube.com/live/... or studio.youtube.com/video/... or UC... Channel ID"
+                className="flex-1 bg-neutral-950 border border-neutral-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 font-mono focus:outline-none"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
+                >
+                  ✓ Sync Live to App
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickLinkBar(false)}
+                  className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </form>
+            <div className="text-[11px] text-neutral-400 flex items-center gap-2 flex-wrap">
+              <span className="text-emerald-400 font-semibold">Tip:</span>
+              <span>
+                In YouTube Studio, make sure your stream Visibility is set to <strong>Public</strong> (not Private) and <strong>Allow embedding</strong> is enabled so it plays inside the app.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {syncSuccessToast && (
+          <div className="bg-emerald-950/90 border-b border-emerald-500/50 px-4 py-2 text-xs font-mono-tactical text-emerald-300 flex items-center justify-between">
+            <span>{syncSuccessToast}</span>
+            <button onClick={() => setSyncSuccessToast(null)} className="text-emerald-400 hover:text-white font-bold cursor-pointer">✕</button>
+          </div>
+        )}
+
+        {/* Automatic YouTube "Allow Embedding" Diagnostic & Seamless Fallback Banner */}
+        {isPrimaryEmbedBlocked && activeVideoId === DEFAULT_CAMERA_VIDEO_ID && (
+          <div className="bg-amber-950/80 border-b border-amber-500/50 px-3.5 sm:px-5 py-3 text-xs space-y-2 animate-fadeIn">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-bold text-amber-200">
+                    Playing Your @chalktech Barbury &amp; Hackpen Feed (<code className="text-emerald-300">{CHALKTECH_VERIFIED_EMBED_ID}</code>) Inside the App
+                  </div>
+                  <p className="text-[11px] text-neutral-200 leading-relaxed">
+                    Your new live stream (<code className="text-amber-300 font-mono">{activeVideoId}</code>) is live on YouTube, but <strong>&ldquo;Allow embedding&rdquo; is currently unticked</strong> in YouTube Studio for <code className="text-amber-300 font-mono">{activeVideoId}</code>. Tick <strong>Allow embedding</strong> in YouTube Studio (under <em>Edit &rarr; Customization / Show More</em>) and this player will automatically switch to <code className="text-amber-300 font-mono">{activeVideoId}</code>!
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <a
+                  href={`https://studio.youtube.com/video/${activeVideoId}/edit`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow"
+                >
+                  <span>1. Enable Embedding in YouTube Studio ↗</span>
+                </a>
+                <a
+                  href={`https://www.youtube.com/live/${activeVideoId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow"
+                >
+                  <span>Watch {activeVideoId} on YouTube ↗</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    tacticalAudio.playRadarPing(880);
+                    const ok = await checkYouTubeVideoEmbeddable(activeVideoId);
+                    setIsPrimaryEmbedBlocked(!ok);
+                    if (ok) {
+                      setForceDirectLiveEmbed(false);
+                      setPlayerRefreshKey((prev) => prev + 1);
+                      setSyncSuccessToast(`✓ Embedding detected! Now playing live stream ${activeVideoId}.`);
+                    } else {
+                      setSyncSuccessToast(`Still waiting for "Allow embedding" to be saved on ${activeVideoId} in YouTube Studio.`);
+                    }
+                    setTimeout(() => setSyncSuccessToast(null), 5000);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-emerald-300 font-semibold text-xs cursor-pointer transition-colors"
+                >
+                  ↻ Re-Check Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Station Cam + Free Live Raptor Cams Bar */}
         <div className="bg-neutral-900/90 border-b border-neutral-800 px-3.5 sm:px-5 py-2.5 flex items-center justify-between text-xs gap-2">
@@ -1229,6 +1454,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 src={activeEmbedSrc}
                 className="w-full h-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
               />
 
