@@ -23,7 +23,9 @@ import {
   Bug, 
   Check, 
   UserPlus,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Send
 } from 'lucide-react';
 import { ObserverProfile, ExperienceLevel } from '../types/community';
 import { SightingLog } from '../types/raptor';
@@ -38,6 +40,15 @@ import {
   downloadJsonFile, 
   AnalyticsEvent 
 } from '../utils/analytics';
+import {
+  ADMIN_NOTIFICATION_EMAIL,
+  sendTestNotificationEmail,
+  getEmailNotificationLogs,
+  EmailNotificationLog,
+  isEmailAlertsEnabled,
+  setEmailAlertsEnabled,
+  getBlockedSpamCount
+} from '../services/emailNotification';
 
 interface AdminMetricsModalProps {
   isOpen: boolean;
@@ -91,18 +102,47 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
 
   // Toast feedback inside modal
   const [adminToast, setAdminToast] = useState<string | null>(null);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState<boolean>(false);
+  const [emailLogs, setEmailLogs] = useState<EmailNotificationLog[]>([]);
+  const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() => isEmailAlertsEnabled());
+  const [blockedSpamCount, setBlockedSpamCount] = useState<number>(() => getBlockedSpamCount());
 
   const showToast = (msg: string) => {
     setAdminToast(msg);
-    setTimeout(() => setAdminToast(null), 3500);
+    setTimeout(() => setAdminToast(null), 4500);
   };
 
   // Reload events on open
   useEffect(() => {
     if (isOpen) {
       setEvents(getStoredAnalyticsEvents());
+      setEmailLogs(getEmailNotificationLogs());
+      setAlertsEnabled(isEmailAlertsEnabled());
+      setBlockedSpamCount(getBlockedSpamCount());
     }
   }, [isOpen]);
+
+  const handleToggleEmailAlerts = () => {
+    const nextState = !alertsEnabled;
+    setEmailAlertsEnabled(nextState);
+    setAlertsEnabled(nextState);
+    tacticalAudio.playRadarPing(nextState ? 880 : 600);
+    showToast(
+      nextState
+        ? `✓ Email notifications RESUMED for ${ADMIN_NOTIFICATION_EMAIL}`
+        : `⏸ Email notifications PAUSED — sign-ups will still be saved locally`
+    );
+  };
+
+  const handleSendTestEmail = async () => {
+    setIsSendingTestEmail(true);
+    tacticalAudio.playRadarPing(880);
+    const res = await sendTestNotificationEmail();
+    setEmailLogs(getEmailNotificationLogs());
+    setBlockedSpamCount(getBlockedSpamCount());
+    setIsSendingTestEmail(false);
+    showToast(res.message);
+  };
 
   // Lock background scroll when open
   useEffect(() => {
@@ -759,13 +799,72 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Instant Email Alert Banner & Anti-Spam Shield for jmzmccormick@gmail.com */}
+                  <div className={`p-3.5 rounded-xl border flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-colors ${
+                    alertsEnabled
+                      ? 'bg-emerald-950/30 border-emerald-500/40'
+                      : 'bg-neutral-900/80 border-neutral-700'
+                  }`}>
+                    <div className="flex items-start gap-2.5">
+                      <div className={`p-2 rounded-lg border shrink-0 mt-0.5 ${
+                        alertsEnabled
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                          : 'bg-neutral-800 border-neutral-700 text-neutral-400'
+                      }`}>
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs font-mono-tactical font-bold flex items-center gap-2 flex-wrap">
+                          <span className={alertsEnabled ? 'text-emerald-300' : 'text-neutral-300'}>
+                            Sign-Up Email Alerts ({ADMIN_NOTIFICATION_EMAIL}): {alertsEnabled ? 'ACTIVE' : 'PAUSED'}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
+                            ANTI-SPAM SHIELD ON
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 text-[10px]">
+                            MAX 3 / DAY • 30M COOLDOWN
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-300 font-sans leading-relaxed">
+                          Protected by <strong>5 anti-spam layers</strong>: Ornithology CAPTCHA verification required, honeypot trap, duplicate callsign filter, URL/keyword spam blocker, and a strict 30-minute cooldown (max 3 emails/day per device).
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleToggleEmailAlerts}
+                        className={`px-3 py-2 rounded-xl font-mono-tactical text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors border ${
+                          alertsEnabled
+                            ? 'bg-neutral-900 hover:bg-neutral-800 text-amber-300 border-amber-500/40'
+                            : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/50'
+                        }`}
+                        title={alertsEnabled ? 'Pause all outgoing email notifications' : 'Resume outgoing email notifications'}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>{alertsEnabled ? 'Pause Alerts' : 'Resume Alerts'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSendingTestEmail || !alertsEnabled}
+                        onClick={handleSendTestEmail}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-mono-tactical text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors shadow"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isSendingTestEmail ? 'Sending...' : 'Send Test Email'}</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Summary Bar */}
-                  <div className="flex items-center justify-between text-xs font-mono-tactical text-neutral-400 px-1">
+                  <div className="flex items-center justify-between text-xs font-mono-tactical text-neutral-400 px-1 flex-wrap gap-2">
                     <span>
                       Displaying <strong className="text-amber-400">{filteredObservers.length}</strong> of {observers.length} Registered Observers
                     </span>
-                    <span className="text-neutral-500">
-                      All accounts human-attested &amp; bot-screened
+                    <span className="text-neutral-400">
+                      Emails dispatched: <strong className="text-emerald-400">{emailLogs.length}</strong> • Spam/duplicates blocked: <strong className="text-amber-400">{blockedSpamCount}</strong>
                     </span>
                   </div>
 

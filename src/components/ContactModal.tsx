@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Mail, 
   Send, 
@@ -15,6 +15,7 @@ import {
   FileText
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
+import { sendContactLiaisonEmail } from '../services/emailNotification';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -35,28 +36,59 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [callsign, setCallsign] = useState<string>(currentCallsign !== 'FIELD-SCOUT' ? currentCallsign : '');
   const [sectorRef, setSectorRef] = useState<string>('Wessex Downland & Ridgeway');
   const [message, setMessage] = useState<string>('');
+  const [honeypot, setHoneypot] = useState<string>('');
+  const [mountTime, setMountTime] = useState<number>(Date.now());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setMountTime(Date.now());
+      setErrorMessage(null);
+      setHoneypot('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !message.trim()) return;
 
+    setErrorMessage(null);
     setIsSending(true);
     tacticalAudio.playRadarPing(880);
 
-    setTimeout(() => {
-      setIsSending(false);
-      setIsSubmitted(true);
-      tacticalAudio.playConfirmChime();
-    }, 700);
+    const elapsedMs = Date.now() - mountTime;
+    const res = await sendContactLiaisonEmail({
+      name: name.trim(),
+      email: email.trim(),
+      callsign: callsign.trim() || currentCallsign,
+      topic,
+      sectorRef,
+      message: message.trim(),
+      honeypot,
+      elapsedMs,
+    });
+
+    setIsSending(false);
+
+    if (!res.success && res.message.includes('Please wait')) {
+      setErrorMessage(res.message);
+      tacticalAudio.playRadarPing(600);
+      return;
+    }
+
+    setIsSubmitted(true);
+    tacticalAudio.playConfirmChime();
   };
 
   const handleReset = () => {
     setIsSubmitted(false);
     setMessage('');
+    setErrorMessage(null);
+    setMountTime(Date.now());
   };
 
   return (
@@ -268,9 +300,29 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               />
             </div>
 
+            {/* Hidden Anti-Bot Honeypot Trap */}
+            <div className="hidden" aria-hidden="true">
+              <label htmlFor="station_fax_extension">Station Fax Extension (Leave Blank)</label>
+              <input
+                id="station_fax_extension"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+              />
+            </div>
+
+            {errorMessage && (
+              <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-2 font-sans">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-3 pt-2 border-t border-neutral-800">
               <span className="text-[10px] text-neutral-400 hidden sm:inline">
-                🔒 Inquiries handled confidentially under UK GDPR standards.
+                🔒 Inquiries handled confidentially under UK GDPR &amp; Anti-Spam Shield.
               </span>
               <div className="flex items-center gap-2 ml-auto">
                 <button

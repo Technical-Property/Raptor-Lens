@@ -62,6 +62,7 @@ import {
   isFakeDiscussion
 } from './services/sightingsFirestore';
 import { validateFirestoreConnection } from './services/firebase';
+import { sendObserverSignupEmail, ADMIN_NOTIFICATION_EMAIL } from './services/emailNotification';
 
 const CLEAN_SLATE_MIGRATION_KEY = 'raptorlens_clean_slate_v1';
 
@@ -679,6 +680,9 @@ export default function App() {
   };
 
   const handleRegisterObserver = (newProfile: ObserverProfile) => {
+    const isExistingUpdate = observers.some(
+      (o) => o.id === newProfile.id || o.callsign.toUpperCase() === newProfile.callsign.toUpperCase()
+    );
     setCurrentCallsign(newProfile.callsign);
     setObservers((prev) => {
       const idx = prev.findIndex((o) => o.id === newProfile.id || o.callsign === newProfile.callsign);
@@ -690,10 +694,12 @@ export default function App() {
       return [newProfile, ...prev];
     });
     saveObserverToFirestore(newProfile);
+    sendObserverSignupEmail(newProfile, isExistingUpdate);
     trackEvent('observer_registered', `New Observer Registered: ${newProfile.callsign} (${newProfile.fullName})`, {
       callsign: newProfile.callsign,
       experienceLevel: newProfile.experienceLevel,
       homeHotspot: newProfile.homeHotspot,
+      notifiedAdmin: ADMIN_NOTIFICATION_EMAIL,
     });
     showToast(`✓ Observer Credentials Verified: Welcome ${newProfile.callsign}!`);
   };
