@@ -58,6 +58,9 @@ import {
   getActiveStreamKey,
   setActiveStreamKey,
   CHALKTECH_CHANNEL_ID,
+  DEFAULT_CAMERA_VIDEO_ID,
+  extractYouTubeVideoId,
+  checkYouTubeVideoEmbeddable,
   maskStreamKey
 } from '../utils/youtube';
 import { saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
@@ -120,6 +123,15 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
   const [blockedSpamCount, setBlockedSpamCount] = useState<number>(() => getBlockedSpamCount());
   const [adminStreamKey, setAdminStreamKey] = useState<string>(() => getActiveStreamKey());
   const [showRawKey, setShowRawKey] = useState<boolean>(false);
+  const [adminBroadcastUrl, setAdminBroadcastUrl] = useState<string>(() => {
+    try {
+      return localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID;
+    } catch {
+      return DEFAULT_CAMERA_VIDEO_ID;
+    }
+  });
+  const [embedCheckStatus, setEmbedCheckStatus] = useState<'idle' | 'checking' | 'ok' | 'blocked'>('idle');
+  const [isSyncingBroadcast, setIsSyncingBroadcast] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setAdminToast(msg);
@@ -134,8 +146,67 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
       setAlertsEnabled(isEmailAlertsEnabled());
       setBlockedSpamCount(getBlockedSpamCount());
       setAdminStreamKey(getActiveStreamKey());
+      try {
+        setAdminBroadcastUrl(localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID);
+      } catch {}
     }
   }, [isOpen]);
+
+  const handleSyncAdminBroadcast = async () => {
+    const raw = adminBroadcastUrl.trim();
+    if (!raw) return;
+    const extractedId = extractYouTubeVideoId(raw);
+    if (!extractedId) {
+      showToast('Please enter a valid YouTube live URL or 11-char video ID.');
+      return;
+    }
+    setIsSyncingBroadcast(true);
+    setEmbedCheckStatus('checking');
+    tacticalAudio.playConfirmChime();
+
+    const isChannel = /^UC[a-zA-Z0-9_-]{22}$/.test(extractedId);
+    const nextUrl = isChannel
+      ? `https://www.youtube.com/channel/${extractedId}/live`
+      : `https://youtube.com/live/${extractedId}`;
+
+    const embedOk = await checkYouTubeVideoEmbeddable(extractedId);
+    setEmbedCheckStatus(embedOk ? 'ok' : 'blocked');
+
+    try {
+      localStorage.setItem('raptorlens_custom_cam', extractedId);
+      localStorage.setItem('raptorlens_channel_url', nextUrl);
+      localStorage.setItem('raptorlens_stream_mode', isChannel ? 'channel' : 'video');
+    } catch {}
+
+    await saveStationStreamConfigToFirestore({
+      videoId: extractedId,
+      channelUrl: nextUrl,
+      mode: isChannel ? 'channel' : 'video',
+      callsign: currentCallsign || 'STATION-OPERATOR',
+    });
+
+    setIsSyncingBroadcast(false);
+    if (embedOk) {
+      showToast(`✓ Broadcast (${extractedId}) synced to Firestore for all website visitors!`);
+    } else {
+      showToast(`⚠️ Synced ${extractedId}, but YouTube reports embedding disabled (HTTP 401).`);
+    }
+  };
+
+  const handleTestEmbedStatus = async () => {
+    const raw = adminBroadcastUrl.trim() || DEFAULT_CAMERA_VIDEO_ID;
+    const extractedId = extractYouTubeVideoId(raw);
+    if (!extractedId) return;
+    setEmbedCheckStatus('checking');
+    tacticalAudio.playRadarPing(880);
+    const embedOk = await checkYouTubeVideoEmbeddable(extractedId);
+    setEmbedCheckStatus(embedOk ? 'ok' : 'blocked');
+    if (embedOk) {
+      showToast(`✓ HTTP 200 OK: ${extractedId} has embedding enabled and is playing.`);
+    } else {
+      showToast(`⚠️ HTTP 401: ${extractedId} embedding is blocked by YouTube Studio.`);
+    }
+  };
 
   const handleSaveAdminStreamKey = async () => {
     const trimmed = adminStreamKey.trim();
@@ -600,8 +671,8 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-850'
                   }`}
                 >
-                  <Key className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Station RTMP Key</span>
+                  <Video className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Station Broadcast &amp; RTMP</span>
                 </button>
 
                 <button
@@ -983,29 +1054,139 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                 </div>
               )}
 
-              {/* TAB: PRIVATE STATION RTMP STREAM KEY (OPERATOR ONLY) */}
+              {/* TAB: STATION BROADCAST & RTMP CONTROLS (OPERATOR ONLY) */}
               {activeTab === 'stream' && (
                 <div className="space-y-5 animate-fadeIn">
                   {/* Security Alert Header */}
                   <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-2">
                     <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
                       <ShieldAlert className="w-5 h-5 text-amber-400" />
-                      <span>Private Broadcaster Control Panel (Confidential)</span>
+                      <span>Station Operator Broadcaster Console (Password Protected)</span>
                     </div>
                     <p className="text-neutral-200 text-xs font-sans leading-relaxed">
-                      Your YouTube RTMP Stream Key is the <strong>broadcasting password</strong> for your channel. It is kept strictly confidential inside this password-protected admin area and is <strong>never displayed to website visitors</strong>.
+                      All broadcast links and RTMP credentials are <strong>strictly locked behind this admin panel</strong>. Public visitors cannot inject arbitrary videos or overwrite the station stream.
                     </p>
                   </div>
 
-                  {/* Stream Key Form */}
+                  {/* CARD 1: OFFICIAL PUBLIC YOUTUBE BROADCAST SYNC */}
                   <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <h4 className="text-xs font-mono-tactical text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                      <div className="flex items-center gap-2">
+                        <Video className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-xs font-mono-tactical text-neutral-200 uppercase tracking-wider font-bold">
+                          1. Official Live Broadcast (What Website Visitors Watch)
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {embedCheckStatus === 'ok' && (
+                          <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span>HTTP 200: EMBED VERIFIED</span>
+                          </span>
+                        )}
+                        {embedCheckStatus === 'blocked' && (
+                          <span className="text-[10px] text-amber-400 font-bold bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-amber-400" />
+                            <span>HTTP 401: EMBED RESTRICTED</span>
+                          </span>
+                        )}
+                        {embedCheckStatus === 'checking' && (
+                          <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/15 px-2 py-0.5 rounded border border-cyan-500/30 animate-pulse">
+                            TESTING OEMBED...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-neutral-300 font-sans leading-relaxed">
+                      Whenever you restart your YouTube stream or get a new live link, paste it below and click <strong>&ldquo;Sync Broadcast to Website&rdquo;</strong>. It immediately updates the embedded player for all website visitors via Firestore.
+                    </p>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] text-neutral-400 block font-mono-tactical">
+                        Public Watch URL (https://youtube.com/live/...) or 11-char Video ID:
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={adminBroadcastUrl}
+                          onChange={(e) => setAdminBroadcastUrl(e.target.value.trim())}
+                          placeholder="e.g. EpVJRK-RWrY or https://youtube.com/live/EpVJRK-RWrY"
+                          className="flex-1 bg-neutral-950 border border-neutral-750 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none"
+                        />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            disabled={isSyncingBroadcast}
+                            onClick={handleSyncAdminBroadcast}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow flex items-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{isSyncingBroadcast ? 'Syncing...' : 'Sync Broadcast to Website'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleTestEmbedStatus}
+                            className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-200 text-xs font-semibold cursor-pointer transition-colors border border-neutral-700 whitespace-nowrap"
+                            title="Check if YouTube has Allow embedding enabled (HTTP 200)"
+                          >
+                            ↻ Test Embed
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdminBroadcastUrl(CHALKTECH_CHANNEL_ID);
+                              showToast(`Channel live mode set: ${CHALKTECH_CHANNEL_ID}`);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-amber-300 text-xs font-semibold cursor-pointer transition-colors border border-neutral-700 whitespace-nowrap"
+                            title="Use automatic channel live endpoint"
+                          >
+                            📡 Channel Live
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-neutral-950 border border-neutral-800 flex items-center justify-between text-xs font-mono-tactical flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-400">Current Player Target:</span>
+                        <code className="text-emerald-300 font-bold">
+                          {adminBroadcastUrl || DEFAULT_CAMERA_VIDEO_ID}
+                        </code>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://studio.youtube.com/video/${extractYouTubeVideoId(adminBroadcastUrl) || 'EpVJRK-RWrY'}/edit`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                        >
+                          <span>YouTube Studio Edit ↗</span>
+                        </a>
+                        <span className="text-neutral-600">|</span>
+                        <a
+                          href={`https://www.youtube.com/live/${extractYouTubeVideoId(adminBroadcastUrl) || 'EpVJRK-RWrY'}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-red-400 hover:underline flex items-center gap-1 text-[11px]"
+                        >
+                          <span>Watch on YouTube ↗</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CARD 2: PRIVATE STATION RTMP STREAM KEY */}
+                  <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
                         <Key className="w-4 h-4 text-amber-400" />
-                        <span>Active RTMP Stream Key</span>
-                      </h4>
+                        <h4 className="text-xs font-mono-tactical text-neutral-200 uppercase tracking-wider font-bold">
+                          2. Private RTMP Stream Key (Broadcaster Encoder Credentials)
+                        </h4>
+                      </div>
                       <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
-                        ADMIN PROTECTED
+                        CONFIDENTIAL
                       </span>
                     </div>
 
@@ -1035,7 +1216,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           onClick={handleSaveAdminStreamKey}
                           className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
                         >
-                          ✓ Save &amp; Link Key
+                          ✓ Save Key
                         </button>
                       </div>
                     </div>
@@ -1084,7 +1265,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         Under <strong>Stream settings &rarr; Stream key</strong>, click the <strong>&ldquo;Reset&rdquo;</strong> button.
                       </li>
                       <li>
-                        Copy the new key and paste it into the box above, then click <strong>Save &amp; Link Key</strong>.
+                        Copy the new key and paste it into the box above, then click <strong>Save Key</strong>.
                       </li>
                       <li>
                         Update your Linux script with the new key.

@@ -1222,6 +1222,7 @@ export default function App() {
               onOpenLogModal={(locationGuess) => handleLogAtCoordinate(51.4835, -1.7895, locationGuess || 'Barbury Castle Summit')}
               onOpenGuide={() => setIsGuideModalOpen(true)}
               onOpenDonate={() => setIsDonateModalOpen(true)}
+              onOpenAdminMetrics={() => setIsAdminModalOpen(true)}
               activeSectorId={activeSectorId}
               currentCallsign={currentCallsign}
               onAddDispatch={handleAddDispatch}

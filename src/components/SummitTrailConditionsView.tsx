@@ -42,7 +42,8 @@ import {
   Sun,
   TrendingUp,
   Key,
-  Copy
+  Copy,
+  Lock
 } from 'lucide-react';
 import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
@@ -79,6 +80,7 @@ interface SummitTrailConditionsViewProps {
   onOpenLogModal: (locationGuess?: string) => void;
   onOpenGuide: () => void;
   onOpenDonate?: () => void;
+  onOpenAdminMetrics?: () => void;
   activeSectorId?: SectorId;
   currentCallsign?: string;
   onAddDispatch?: (dispatch: RssDispatch) => void;
@@ -91,6 +93,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   onOpenLogModal,
   onOpenGuide,
   onOpenDonate,
+  onOpenAdminMetrics,
   activeSectorId = 'ridgeway-wessex',
   currentCallsign = 'RIDGE-WALKER',
   onAddDispatch,
@@ -102,8 +105,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(DEFAULT_CAMERA_VIDEO_ID);
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
-  const [quickLinkDraft, setQuickLinkDraft] = useState<string>('');
-  const [showQuickLinkBar, setShowQuickLinkBar] = useState<boolean>(false);
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
@@ -351,8 +352,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       setCustomChannelInput(nextChannelUrl);
       setStreamMode('channel');
       setPlayerRefreshKey((prev) => prev + 1);
-      setQuickLinkDraft('');
-      setShowQuickLinkBar(false);
 
       await saveStationStreamConfigToFirestore({
         videoId: CHALKTECH_CHANNEL_ID,
@@ -381,8 +380,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     setCustomChannelInput(nextChannelUrl);
     setStreamMode(isChannel ? 'channel' : 'video');
     setPlayerRefreshKey((prev) => prev + 1);
-    setQuickLinkDraft('');
-    setShowQuickLinkBar(false);
 
     await saveStationStreamConfigToFirestore({
       videoId: extractedId,
@@ -988,22 +985,20 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               <span>Reload</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                tacticalAudio.playRadarPing(840);
-                setShowQuickLinkBar((prev) => !prev);
-              }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors border ${
-                showQuickLinkBar
-                  ? 'bg-amber-500 text-neutral-950 border-amber-400 font-bold'
-                  : 'bg-neutral-800 hover:bg-neutral-750 text-amber-300 border-amber-500/40'
-              }`}
-              title="Paste your new YouTube Live link to update the app immediately"
-            >
-              <Video className="w-3.5 h-3.5" />
-              <span>Link New Stream</span>
-            </button>
+            {onOpenAdminMetrics && (
+              <button
+                type="button"
+                onClick={() => {
+                  tacticalAudio.playRadarPing(840);
+                  onOpenAdminMetrics();
+                }}
+                className="bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700 hover:border-amber-500/50 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Station Broadcaster Controls (Password Protected)"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Station Controls</span>
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -1041,70 +1036,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </button>
           </div>
         </div>
-
-        {/* Instant 1-Click "Link New YouTube Stream" Sync Bar */}
-        {showQuickLinkBar && (
-          <div className="bg-neutral-900 border-b border-amber-500/40 px-3.5 sm:px-5 py-3 space-y-2.5 animate-fadeIn">
-            <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
-              <span className="font-bold text-amber-300 flex items-center gap-1.5">
-                <Video className="w-4 h-4 text-amber-400" />
-                <span>Paste Your Live YouTube Watch Link or Channel ID:</span>
-              </span>
-              <span className="text-[11px] text-neutral-400">
-                Playing: <code className="text-emerald-400 font-mono">{isRtmpStreamKeyOrUrl(activeVideoId) ? CHALKTECH_CHANNEL_ID : activeVideoId}</code>
-              </span>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSyncStationStream(quickLinkDraft || customVideoId);
-              }}
-              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
-            >
-              <input
-                type="text"
-                value={quickLinkDraft}
-                onChange={(e) => setQuickLinkDraft(e.target.value)}
-                placeholder="Paste YouTube Stream Link (e.g. https://youtu.be/... or https://youtube.com/live/...) or Channel ID"
-                className="flex-1 bg-neutral-950 border border-neutral-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 font-mono focus:outline-none"
-              />
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
-                >
-                  ✓ Sync Live to App
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSyncStationStream(CHALKTECH_CHANNEL_ID);
-                  }}
-                  className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 border border-neutral-700 text-emerald-300 font-semibold text-xs cursor-pointer transition-colors whitespace-nowrap"
-                  title="Stream directly from the official @chalktech channel live feed"
-                >
-                  📡 Auto-Detect @chalktech
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickLinkBar(false)}
-                  className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-            </form>
-
-            <div className="text-[11px] text-neutral-400 flex items-center justify-between gap-2 flex-wrap pt-1 font-sans">
-              <span>
-                💡 In YouTube Studio Live, click the <strong>Share</strong> arrow icon (top right) and paste the link above to lock this broadcast ID into the app.
-              </span>
-              <span className="text-neutral-500">
-                Embedding must be set to Public with &ldquo;Allow embedding&rdquo; enabled in YouTube Studio.
-              </span>
-            </div>
-          </div>
-        )}
 
         {syncSuccessToast && (
           <div className="bg-emerald-950/90 border-b border-emerald-500/50 px-4 py-2 text-xs font-mono-tactical text-emerald-300 flex items-center justify-between">
@@ -1283,71 +1214,39 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
             </div>
 
-            {/* Field 1: Custom Video / Livestream Input */}
-            <div className="space-y-2 pt-1 border-t border-neutral-800">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <label className="text-[11px] text-neutral-300 font-medium">
-                  Custom YouTube Stream Link or Video ID:
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Paste YouTube livestream URL (watch / live) or 11-char ID..."
-                  value={customVideoId}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    const val = isLocalIpAddress(raw) || isRtmpStreamKeyOrUrl(raw) ? raw.trim() : extractYouTubeVideoId(raw);
-                    setCustomVideoId(val);
-                  }}
-                  className="flex-1 bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-500 font-mono text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    tacticalAudio.playRadarPing(880);
-                    setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
-                    setStreamMode('video');
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-750 border border-neutral-700 text-amber-300 text-xs font-mono cursor-pointer transition-colors whitespace-nowrap"
-                >
-                  Reset Default
-                </button>
-                {customVideoId && (
+            {/* Broadcaster Protected Admin Panel Callout */}
+            <div className="pt-2 border-t border-neutral-800">
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0 mt-0.5">
+                    <Lock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-bold text-neutral-200 flex items-center gap-2">
+                      <span>Station Broadcaster Controls (Locked)</span>
+                      <span className="text-[10px] text-amber-400 bg-amber-500/15 px-1.5 py-0.2 rounded border border-amber-500/30">
+                        OPERATOR ONLY
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400 font-sans leading-relaxed">
+                      Only authenticated station operators can update the official live broadcast URL, RTMP keys, or sync changes across all visitors.
+                    </p>
+                  </div>
+                </div>
+
+                {onOpenAdminMetrics && (
                   <button
                     type="button"
-                    onClick={() => setCustomVideoId('')}
-                    className="px-2 py-1.5 text-neutral-400 hover:text-rose-400 text-xs font-bold cursor-pointer"
+                    onClick={() => {
+                      tacticalAudio.playRadarPing(840);
+                      onOpenAdminMetrics();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shadow self-start sm:self-auto"
                   >
-                    Clear
+                    <Key className="w-3 h-3" />
+                    <span>Open Admin Console</span>
                   </button>
                 )}
-              </div>
-            </div>
-
-            {/* Field 2: YouTube Channel Link */}
-            <div className="space-y-1">
-              <label className="text-[11px] text-neutral-300 font-medium flex items-center justify-between">
-                <span>YouTube Channel URL or Handle (@name):</span>
-                <span className="text-[10px] text-neutral-400 font-sans">Connects the "Visit Channel" button directly</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Paste YouTube Channel URL (e.g. https://youtube.com/@channelName) or watch link..."
-                  value={customChannelInput}
-                  onChange={(e) => setCustomChannelInput(e.target.value)}
-                  className="flex-1 bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-red-500 font-mono text-xs"
-                />
-                <a
-                  href={resolvedChannelUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => tacticalAudio.playRadarPing(880)}
-                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
-                >
-                  <span>Open ↗</span>
-                </a>
               </div>
             </div>
 
