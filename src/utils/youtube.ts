@@ -6,10 +6,10 @@
 
 // Verified 24/7 active live raptor & wildlife streams
 export const CHALKTECH_CHANNEL_ID = 'UCIndyyYl6gizIAxgLXAfVyw'; // Official @chalktech YouTube Channel ID
-export const CHALKTECH_LIVE_STREAM_ID = '36w5VpxTmtk'; // Current active @chalktech live broadcast
+export const CHALKTECH_LIVE_STREAM_ID = 'EpVJRK-RWrY'; // Current active @chalktech live broadcast session
 export const CHALKTECH_VERIFIED_EMBED_ID = 'D9NvW7EA1B0'; // Verified embed-enabled @chalktech Hackpen Hill & Barbury Castle stream
-export const DEFAULT_CAMERA_VIDEO_ID = '36w5VpxTmtk'; // Official RaptorLens UK Station Live Stream (Rolling PTZ)
-export const RAPTORLENS_STATION_VIDEO_ID = '36w5VpxTmtk'; // Official RaptorLens UK Live Cam
+export const DEFAULT_CAMERA_VIDEO_ID = 'EpVJRK-RWrY'; // Official RaptorLens UK Station Live Stream
+export const RAPTORLENS_STATION_VIDEO_ID = 'EpVJRK-RWrY'; // Official RaptorLens UK Live Cam
 export const UK_OWL_KESTREL_VIDEO_ID = 'q28Q9_qzqyg'; // Robert E Fuller UK Barn Owl, Kestrel & Tawny Owl Live Cam
 export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon Cam 1
 export const OSPREY_UK_VIDEO_ID = 'V08ET209nvU';       // Rutland Osprey Project (Manton Bay, UK) Live Cam
@@ -54,15 +54,39 @@ export interface CameraPresetOption {
 export const POPULAR_CAMERA_PRESETS: CameraPresetOption[] = [
   {
     id: 'raptorlens-station',
-    name: 'RaptorLens Station Cam (Rolling 4-View Tour)',
-    shortLabel: '📡 Station Cam (Rolling)',
+    name: 'Official Station Live Cam (EpVJRK-RWrY)',
+    shortLabel: '📡 Station Live Cam',
     badge: 'PRIMARY STATION',
-    videoId: RAPTORLENS_STATION_VIDEO_ID,
+    videoId: 'EpVJRK-RWrY',
     channelName: 'RaptorLens UK Official Broadcast',
-    channelUrl: 'https://youtube.com/live/36w5VpxTmtk',
+    channelUrl: 'https://youtube.com/live/EpVJRK-RWrY',
     species: 'Red Kite, Buzzard, Kestrel & Ridge Weather',
     location: 'Hackpen Hill • Barbury Fort • Field • Perch',
-    description: 'Official rolling PTZ camera cycling across Hackpen Hill View, Barbury Fort View, Field View, and Perch View.',
+    description: 'Official 24/7 live camera broadcast streaming from the station at Barbury Castle & Hackpen Hill.',
+  },
+  {
+    id: 'raptorlens-channel',
+    name: 'Official @chalktech Channel Live (Auto-Detect)',
+    shortLabel: '📡 @chalktech Live',
+    badge: 'CHANNEL FEED',
+    videoId: CHALKTECH_CHANNEL_ID,
+    channelName: 'RaptorLens UK Official Broadcast',
+    channelUrl: `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`,
+    species: 'Red Kite, Buzzard & Wiltshire Ridge',
+    location: 'Hackpen Hill • Barbury Fort • Field • Perch',
+    description: 'Direct channel live feed streaming from the @chalktech YouTube channel.',
+  },
+  {
+    id: 'raptorlens-backup',
+    name: 'Hackpen Hill & Barbury Castle (Backup Feed)',
+    shortLabel: '📹 Ridge Cam Backup',
+    badge: 'BACKUP STREAM',
+    videoId: CHALKTECH_VERIFIED_EMBED_ID,
+    channelName: '@chalktech Barbury Feed',
+    channelUrl: `https://www.youtube.com/watch?v=${CHALKTECH_VERIFIED_EMBED_ID}`,
+    species: 'Barbury Castle & Hackpen Downland Vista',
+    location: 'Barbury Castle Estate, Wiltshire, UK',
+    description: 'Verified embed-enabled high definition overview of the Wiltshire downlands.',
   },
   {
     id: 'uk-owl-kestrel',
@@ -335,8 +359,11 @@ export function buildYouTubeEmbedSrc(options: {
     return `https://www.youtube.com/embed/live_stream?channel=${cleanVideoId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
-  if (mode === 'channel' && channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim())) {
-    return `https://www.youtube.com/embed/live_stream?channel=${channelId.trim()}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
+  if (mode === 'channel') {
+    const targetChannel = (channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim()))
+      ? channelId.trim()
+      : CHALKTECH_CHANNEL_ID;
+    return `https://www.youtube.com/embed/live_stream?channel=${targetChannel}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
   return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
