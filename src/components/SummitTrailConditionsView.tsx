@@ -40,7 +40,9 @@ import {
   Volume2,
   Moon,
   Sun,
-  TrendingUp
+  TrendingUp,
+  Key,
+  Copy
 } from 'lucide-react';
 import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
@@ -58,6 +60,7 @@ import {
   checkYouTubeVideoEmbeddable,
   StreamPlayMode,
   DEFAULT_CAMERA_VIDEO_ID,
+  CHALKTECH_CHANNEL_ID,
   CHALKTECH_VERIFIED_EMBED_ID,
   DEMO_NATURE_VIDEO_ID,
   POPULAR_CAMERA_PRESETS,
@@ -65,7 +68,10 @@ import {
   EAGLE_LIVE_VIDEO_ID,
   isLocalIpAddress,
   formatLocalIpUrl,
-  isRtmpStreamKeyOrUrl
+  isRtmpStreamKeyOrUrl,
+  getActiveStreamKey,
+  setActiveStreamKey,
+  ACTIVE_STATION_STREAM_KEY
 } from '../utils/youtube';
 
 interface SummitTrailConditionsViewProps {
@@ -138,6 +144,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [showFeedInput, setShowFeedInput] = useState<boolean>(false);
   const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);
+  const [streamKey, setStreamKey] = useState<string>(() => getActiveStreamKey());
+  const [showStreamKeyModal, setShowStreamKeyModal] = useState<boolean>(false);
+  const [copiedKeyToast, setCopiedKeyToast] = useState<string | null>(null);
   const [weather, setWeather] = useState<BarburySummitWeather>(BARBURY_SUMMIT_WEATHER);
   const [isWeatherLive, setIsWeatherLive] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches' | 'kit'>('parking');
@@ -334,11 +343,34 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const handleSyncStationStream = async (rawInput: string) => {
     const trimmed = rawInput.trim();
     if (!trimmed) return;
+
+    // If an RTMP stream key is entered (e.g. z0t6-04g3-ftyd-21mq-7k05):
     if (isRtmpStreamKeyOrUrl(trimmed)) {
-      setSyncSuccessToast('⚠ That is your secret RTMP Stream Key for Linux ffmpeg. Paste your public YouTube Live watch/share link instead!');
+      tacticalAudio.playConfirmChime();
+      setActiveStreamKey(trimmed);
+      setStreamKey(trimmed);
+      const nextChannelUrl = `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`;
+      setStationPrimaryVideoId(CHALKTECH_CHANNEL_ID);
+      setCustomVideoId(CHALKTECH_CHANNEL_ID);
+      setCustomChannelInput(nextChannelUrl);
+      setStreamMode('channel');
+      setPlayerRefreshKey((prev) => prev + 1);
+      setQuickLinkDraft('');
+      setShowQuickLinkBar(false);
+
+      await saveStationStreamConfigToFirestore({
+        videoId: CHALKTECH_CHANNEL_ID,
+        channelId: CHALKTECH_CHANNEL_ID,
+        channelUrl: nextChannelUrl,
+        mode: 'channel',
+        callsign: currentCallsign,
+      });
+
+      setSyncSuccessToast(`✓ Stream Key (${trimmed}) received & linked! Live feed playing now via your official @chalktech channel.`);
       setTimeout(() => setSyncSuccessToast(null), 6000);
       return;
     }
+
     const extractedId = extractYouTubeVideoId(trimmed);
     if (!extractedId) return;
 
@@ -411,7 +443,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   }, [activeVideoId, playerRefreshKey]);
 
   const effectiveEmbedVideoId =
-    isPrimaryEmbedBlocked && !forceDirectLiveEmbed && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
+    isRtmpStreamKeyOrUrl(activeVideoId)
+      ? CHALKTECH_CHANNEL_ID
+      : isPrimaryEmbedBlocked && !forceDirectLiveEmbed && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
       ? CHALKTECH_VERIFIED_EMBED_ID
       : activeVideoId;
 
@@ -967,10 +1001,23 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   ? 'bg-amber-500 text-neutral-950 border-amber-400 font-bold'
                   : 'bg-neutral-800 hover:bg-neutral-750 text-amber-300 border-amber-500/40'
               }`}
-              title="Paste your new YouTube Live link to update the app immediately"
+              title="Paste your new YouTube Live link or RTMP Stream Key to update the app immediately"
             >
               <Video className="w-3.5 h-3.5" />
               <span>Link New Stream</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playRadarPing(880);
+                setShowStreamKeyModal(true);
+              }}
+              className="bg-neutral-800 hover:bg-neutral-750 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+              title="View RTMP Stream Key & how to stop having to get new keys"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>Stream Key</span>
             </button>
 
             <button
@@ -1012,14 +1059,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
         {/* Instant 1-Click "Link New YouTube Stream" Sync Bar */}
         {showQuickLinkBar && (
-          <div className="bg-neutral-900 border-b border-amber-500/40 px-3.5 sm:px-5 py-3 space-y-2 animate-fadeIn">
+          <div className="bg-neutral-900 border-b border-amber-500/40 px-3.5 sm:px-5 py-3 space-y-2.5 animate-fadeIn">
             <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
               <span className="font-bold text-amber-300 flex items-center gap-1.5">
                 <Video className="w-4 h-4 text-amber-400" />
-                <span>Paste Your Live YouTube Link (or Channel ID) to Update the App Instantly:</span>
+                <span>Paste Your Live YouTube Link, Channel ID, or Stream Key:</span>
               </span>
               <span className="text-[11px] text-neutral-400">
-                Current ID: <code className="text-emerald-400 font-mono">{activeVideoId}</code>
+                Playing: <code className="text-emerald-400 font-mono">{activeVideoId}</code>
               </span>
             </div>
             <form
@@ -1033,7 +1080,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 type="text"
                 value={quickLinkDraft}
                 onChange={(e) => setQuickLinkDraft(e.target.value)}
-                placeholder="Paste https://youtube.com/live/... or studio.youtube.com/video/... or UC... Channel ID"
+                placeholder="Paste YouTube Stream Link (https://youtube.com/live/...) or Stream Key (e.g. z0t6-04g3-ftyd-21mq-7k05)"
                 className="flex-1 bg-neutral-950 border border-neutral-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 font-mono focus:outline-none"
               />
               <div className="flex items-center gap-2">
@@ -1052,12 +1099,49 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 </button>
               </div>
             </form>
-            <div className="text-[11px] text-neutral-400 flex items-center gap-2 flex-wrap">
-              <span className="text-emerald-400 font-semibold">Tip:</span>
-              <span>
-                In YouTube Studio, make sure your stream Visibility is set to <strong>Public</strong> (not Private) and <strong>Allow embedding</strong> is enabled so it plays inside the app.
-              </span>
+
+            {/* Active Stream Key helper strip */}
+            <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-neutral-800 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs font-mono-tactical">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-amber-400 font-bold flex items-center gap-1">
+                  <Key className="w-3.5 h-3.5" /> Active RTMP Key:
+                </span>
+                <code className="text-emerald-300 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-750">
+                  {streamKey || ACTIVE_STATION_STREAM_KEY}
+                </code>
+                <span className="text-neutral-400 text-[11px] font-sans">
+                  (Auto-linked to your @chalktech 24/7 channel player)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`rtmp://a.rtmp.youtube.com/live2/${streamKey || ACTIVE_STATION_STREAM_KEY}`);
+                    tacticalAudio.playConfirmChime();
+                    setCopiedKeyToast('✓ Full RTMP OBS URL copied!');
+                    setTimeout(() => setCopiedKeyToast(null), 3500);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-neutral-850 hover:bg-neutral-800 text-neutral-200 text-[11px] font-mono-tactical flex items-center gap-1 cursor-pointer transition-colors border border-neutral-700"
+                >
+                  <Copy className="w-3 h-3 text-cyan-400" />
+                  <span>Copy RTMP URL for OBS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStreamKeyModal(true)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-[11px] font-mono-tactical border border-amber-500/40 cursor-pointer"
+                >
+                  Stop needing new keys ↗
+                </button>
+              </div>
             </div>
+
+            {copiedKeyToast && (
+              <div className="text-emerald-400 text-xs font-mono-tactical animate-fadeIn">
+                {copiedKeyToast}
+              </div>
+            )}
           </div>
         )}
 
@@ -1418,18 +1502,18 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 </div>
               )}
             </div>
-          ) : isLocalIpAddress(activeVideoId) || isRtmpStreamKeyOrUrl(activeVideoId) ? (
-            /* CASE B: Non-public URL entered */
+          ) : isLocalIpAddress(activeVideoId) ? (
+            /* CASE B: Local IP entered */
             <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-200 space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
                 <Video className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-md">
                 <h3 className="font-display-tactical text-base font-bold text-neutral-100">
-                  Public YouTube Live Link Required
+                  Local Network IP Camera
                 </h3>
                 <p className="text-xs text-neutral-400 leading-relaxed font-sans">
-                  Please use a public YouTube Live broadcast URL or select one of the verified live raptor cameras above.
+                  Local IP addresses (e.g. 192.168.x.x) can only be viewed on your local home network. To share your feed with birders across Britain, stream to YouTube Live using your RTMP stream key.
                 </p>
               </div>
               <button
@@ -1465,6 +1549,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     <span className="text-rose-400 font-bold animate-pulse">⏪ DVR REWIND ({activeRewindMarker.rewindText})</span>
                     <span className="text-neutral-600 hidden sm:inline">|</span>
                     <span className="text-amber-300 font-bold hidden sm:inline">{activeRewindMarker.title}</span>
+                  </>
+                ) : isRtmpStreamKeyOrUrl(activeVideoId) ? (
+                  <>
+                    <span className="text-emerald-400 font-bold">STREAM KEY LINKED</span>
+                    <span className="text-neutral-600 hidden sm:inline">|</span>
+                    <span className="text-amber-300 font-mono hidden sm:inline">{activeVideoId}</span>
+                    <span className="text-neutral-400 hidden sm:inline">• @chalktech live</span>
                   </>
                 ) : activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
                   <>
@@ -2698,6 +2789,157 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   type="button"
                   onClick={() => setShowTroubleshootModal(false)}
                   className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs font-mono-tactical cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Stream Key & Permanent Auto-Broadcast Guide Modal */}
+      {showStreamKeyModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fadeIn">
+          <div className="bg-neutral-950 border border-amber-500/50 rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl space-y-4 font-mono-tactical text-xs text-neutral-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display-tactical text-base sm:text-lg font-bold text-neutral-100">
+                    Station RTMP Stream Key &amp; OBS Setup
+                  </h3>
+                  <p className="text-[11px] text-neutral-400 font-sans">
+                    Auto-linked to your official @chalktech 24/7 channel broadcast
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStreamKeyModal(false)}
+                className="text-neutral-400 hover:text-neutral-100 text-sm font-bold cursor-pointer p-1 rounded-lg hover:bg-neutral-900"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Active Key & One-Click Copy */}
+            <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Current RTMP Stream Key:</span>
+                </span>
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                  ACTIVE IN APP
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={streamKey}
+                  onChange={(e) => {
+                    const next = e.target.value.trim();
+                    setStreamKey(next);
+                    setActiveStreamKey(next);
+                  }}
+                  className="flex-1 bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-emerald-300 font-mono text-xs focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`rtmp://a.rtmp.youtube.com/live2/${streamKey}`);
+                    tacticalAudio.playConfirmChime();
+                    setCopiedKeyToast('✓ Full RTMP OBS URL copied to clipboard!');
+                    setTimeout(() => setCopiedKeyToast(null), 3500);
+                  }}
+                  className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors shadow shrink-0"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy RTMP URL</span>
+                </button>
+              </div>
+
+              {copiedKeyToast && (
+                <div className="text-emerald-400 text-[11px] font-bold animate-fadeIn">
+                  {copiedKeyToast}
+                </div>
+              )}
+
+              <div className="text-[11px] text-neutral-400 space-y-1 pt-1 border-t border-neutral-800/80 font-sans">
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-500">RTMP Ingest Server:</span>
+                  <code className="text-neutral-300 font-mono">rtmp://a.rtmp.youtube.com/live2</code>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-500">Channel Live Player:</span>
+                  <code className="text-cyan-300 font-mono">https://youtube.com/channel/{CHALKTECH_CHANNEL_ID}/live</code>
+                </div>
+              </div>
+            </div>
+
+            {/* Permanent Solution: How to stop having to get new keys */}
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold text-xs uppercase tracking-wide">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>How to Stop Having to Get a New Key Every Time</span>
+              </div>
+              <p className="text-[11px] text-neutral-300 font-sans leading-relaxed">
+                If YouTube keeps asking you for a new key every stream, it is because YouTube defaults to single-use event keys. You can make it 100% permanent with this 30-second fix:
+              </p>
+              <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-neutral-200 font-sans leading-relaxed pl-1">
+                <li>
+                  Go to <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="text-amber-400 underline font-semibold">studio.youtube.com ↗</a> and click <strong>Go Live</strong>.
+                </li>
+                <li>
+                  Click the <strong>Stream</strong> tab (the top-left radio tower icon).
+                </li>
+                <li>
+                  Under <strong>Stream settings &rarr; Stream key</strong>, click the dropdown and choose <strong>&ldquo;Create new stream key&rdquo;</strong>.
+                </li>
+                <li>
+                  Give it a name (e.g. <em>RaptorLens 24/7</em>) and select <strong>Permanent / Reusable</strong>.
+                </li>
+                <li>
+                  Enter this key into OBS Studio or your IP camera <strong>just once</strong>.
+                </li>
+              </ol>
+              <div className="p-2.5 rounded-lg bg-neutral-950/80 border border-amber-500/30 text-[11px] text-emerald-300 font-sans mt-2">
+                ✓ <strong>Done forever!</strong> Because RaptorLens UK is already hardwired to your official Channel ID (<code className="font-mono text-amber-300">{CHALKTECH_CHANNEL_ID}</code>), whenever you turn on your camera or hit &ldquo;Start Streaming&rdquo; in OBS, your live broadcast will automatically play for all visitors with <strong>zero manual steps</strong>!
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800 flex-wrap">
+              <a
+                href="https://studio.youtube.com"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-750 text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-red-500" />
+                <span>Open YouTube Studio ↗</span>
+              </a>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playConfirmChime();
+                    handleSyncStationStream(streamKey);
+                    setShowStreamKeyModal(false);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors shadow"
+                >
+                  ✓ Apply &amp; Play Live
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStreamKeyModal(false)}
+                  className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs cursor-pointer"
                 >
                   Close
                 </button>

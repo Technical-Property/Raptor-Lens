@@ -74,7 +74,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
     setIsSending(false);
 
-    if (!res.success && res.message.includes('Please wait')) {
+    if (!res.ok && res.message.includes('Please wait')) {
       setErrorMessage(res.message);
       tacticalAudio.playRadarPing(600);
       return;

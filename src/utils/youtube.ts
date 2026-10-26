@@ -241,10 +241,29 @@ export function extractYouTubeChannelInfo(input: string): YouTubeChannelInfo {
   };
 }
 
+export const ACTIVE_STATION_STREAM_KEY = 'z0t6-04g3-ftyd-21mq-7k05';
+
+export function getActiveStreamKey(): string {
+  try {
+    return localStorage.getItem('raptorlens_stream_key') || ACTIVE_STATION_STREAM_KEY;
+  } catch {
+    return ACTIVE_STATION_STREAM_KEY;
+  }
+}
+
+export function setActiveStreamKey(key: string): void {
+  try {
+    localStorage.setItem('raptorlens_stream_key', key.trim());
+  } catch {}
+}
+
 /**
  * Resolves the primary URL to open the YouTube Channel or stream directly.
  */
 export function getYouTubeChannelUrl(channelInput?: string, videoId: string = DEFAULT_CAMERA_VIDEO_ID): string {
+  if (videoId && isRtmpStreamKeyOrUrl(videoId)) {
+    return `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`;
+  }
   if (videoId && /^UC[a-zA-Z0-9_-]{22}$/.test(videoId.trim())) {
     return `https://www.youtube.com/channel/${videoId.trim()}/live`;
   }
@@ -294,6 +313,15 @@ export function buildYouTubeEmbedSrc(options: {
   }
 
   const cleanVideoId = (videoId || DEFAULT_CAMERA_VIDEO_ID).trim();
+
+  // If cleanVideoId is an RTMP stream key (e.g. z0t6-04g3-ftyd-21mq-7k05),
+  // seamlessly bridge it to the station's permanent YouTube Channel Live stream!
+  if (isRtmpStreamKeyOrUrl(cleanVideoId)) {
+    const targetChannel = (channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim()))
+      ? channelId.trim()
+      : CHALKTECH_CHANNEL_ID;
+    return `https://www.youtube.com/embed/live_stream?channel=${targetChannel}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
 
   // If cleanVideoId is a 24-char YouTube Channel ID (UC...), use the permanent channel live stream endpoint
   if (/^UC[a-zA-Z0-9_-]{22}$/.test(cleanVideoId)) {

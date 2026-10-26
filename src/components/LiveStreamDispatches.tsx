@@ -56,8 +56,11 @@ import {
   checkYouTubeVideoEmbeddable,
   StreamPlayMode,
   DEFAULT_CAMERA_VIDEO_ID,
+  CHALKTECH_CHANNEL_ID,
   CHALKTECH_VERIFIED_EMBED_ID,
-  DEMO_NATURE_VIDEO_ID
+  DEMO_NATURE_VIDEO_ID,
+  isRtmpStreamKeyOrUrl,
+  setActiveStreamKey
 } from '../utils/youtube';
 
 export const isLocalIpAddress = (val: string): boolean => {
@@ -272,7 +275,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   useEffect(() => {
     let isMounted = true;
     const verifyEmbed = async () => {
-      if (!activeVideoId || isLocalIpAddress(activeVideoId)) return;
+      if (!activeVideoId || isLocalIpAddress(activeVideoId) || isRtmpStreamKeyOrUrl(activeVideoId)) return;
       const ok = await checkYouTubeVideoEmbeddable(activeVideoId);
       if (isMounted) setIsPrimaryEmbedBlocked(!ok);
     };
@@ -285,7 +288,9 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   }, [activeVideoId]);
 
   const effectiveEmbedVideoId =
-    isPrimaryEmbedBlocked && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
+    isRtmpStreamKeyOrUrl(activeVideoId)
+      ? CHALKTECH_CHANNEL_ID
+      : isPrimaryEmbedBlocked && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
       ? CHALKTECH_VERIFIED_EMBED_ID
       : activeVideoId;
 
@@ -717,7 +722,9 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                     value={customVideoId}
                     onChange={(e) => {
                       let val = e.target.value.trim();
-                      if (!isLocalIpAddress(val)) {
+                      if (isRtmpStreamKeyOrUrl(val)) {
+                        setActiveStreamKey(val);
+                      } else if (!isLocalIpAddress(val)) {
                         val = extractYouTubeVideoId(val);
                       }
                       setCustomVideoId(val);
