@@ -1085,7 +1085,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                   }}
                   className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors shadow"
                 >
-                  <span>Switch to My Cam ({activeVideoId})</span>
+                  <span>Switch to My Cam ({isRtmpStreamKeyOrUrl(activeVideoId) ? 'Station Cam' : activeVideoId})</span>
                 </button>
               </div>
             </div>
@@ -1094,7 +1094,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="text-neutral-200 text-[11px] font-medium">
-                  Live Feed ID: <code className="text-amber-300 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">{activeVideoId}</code>
+                  Live Feed ID: <code className="text-amber-300 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">{isRtmpStreamKeyOrUrl(activeVideoId) ? CHALKTECH_CHANNEL_ID : activeVideoId}</code>
                 </span>
                 <span className="text-neutral-400 text-[11px] hidden lg:inline">
                   If the player shows black, test with Demo Feed or verify YouTube Studio stream settings.

@@ -25,7 +25,12 @@ import {
   UserPlus,
   AlertCircle,
   Mail,
-  Send
+  Send,
+  Key,
+  Copy,
+  Video,
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 import { ObserverProfile, ExperienceLevel } from '../types/community';
 import { SightingLog } from '../types/raptor';
@@ -49,6 +54,13 @@ import {
   setEmailAlertsEnabled,
   getBlockedSpamCount
 } from '../services/emailNotification';
+import {
+  getActiveStreamKey,
+  setActiveStreamKey,
+  CHALKTECH_CHANNEL_ID,
+  maskStreamKey
+} from '../utils/youtube';
+import { saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
 
 interface AdminMetricsModalProps {
   isOpen: boolean;
@@ -62,7 +74,7 @@ interface AdminMetricsModalProps {
   mapViewMode: 'clean' | 'telemetry';
 }
 
-type AdminTab = 'overview' | 'roster' | 'analytics' | 'events';
+type AdminTab = 'overview' | 'roster' | 'stream' | 'analytics' | 'events';
 
 const ADMIN_PASSKEY = 'raptor2026';
 
@@ -106,6 +118,8 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
   const [emailLogs, setEmailLogs] = useState<EmailNotificationLog[]>([]);
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(() => isEmailAlertsEnabled());
   const [blockedSpamCount, setBlockedSpamCount] = useState<number>(() => getBlockedSpamCount());
+  const [adminStreamKey, setAdminStreamKey] = useState<string>(() => getActiveStreamKey());
+  const [showRawKey, setShowRawKey] = useState<boolean>(false);
 
   const showToast = (msg: string) => {
     setAdminToast(msg);
@@ -119,8 +133,27 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
       setEmailLogs(getEmailNotificationLogs());
       setAlertsEnabled(isEmailAlertsEnabled());
       setBlockedSpamCount(getBlockedSpamCount());
+      setAdminStreamKey(getActiveStreamKey());
     }
   }, [isOpen]);
+
+  const handleSaveAdminStreamKey = async () => {
+    const trimmed = adminStreamKey.trim();
+    setActiveStreamKey(trimmed);
+    tacticalAudio.playConfirmChime();
+    if (trimmed) {
+      await saveStationStreamConfigToFirestore({
+        videoId: CHALKTECH_CHANNEL_ID,
+        channelId: CHALKTECH_CHANNEL_ID,
+        channelUrl: `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`,
+        mode: 'channel',
+        callsign: currentCallsign,
+      });
+      showToast('✓ Private RTMP Stream Key saved securely & linked to channel!');
+    } else {
+      showToast('Stream key cleared.');
+    }
+  };
 
   const handleToggleEmailAlerts = () => {
     const nextState = !alertsEnabled;
@@ -559,6 +592,21 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                 <button
                   onClick={() => {
                     tacticalAudio.playRadarPing(880);
+                    setActiveTab('stream');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-mono-tactical font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
+                    activeTab === 'stream'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-850'
+                  }`}
+                >
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Station RTMP Key</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(880);
                     setActiveTab('analytics');
                   }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-mono-tactical font-semibold flex items-center gap-2 cursor-pointer transition-colors ${
@@ -931,6 +979,120 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: PRIVATE STATION RTMP STREAM KEY (OPERATOR ONLY) */}
+              {activeTab === 'stream' && (
+                <div className="space-y-5 animate-fadeIn">
+                  {/* Security Alert Header */}
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/40 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                      <ShieldAlert className="w-5 h-5 text-amber-400" />
+                      <span>Private Broadcaster Control Panel (Confidential)</span>
+                    </div>
+                    <p className="text-neutral-200 text-xs font-sans leading-relaxed">
+                      Your YouTube RTMP Stream Key is the <strong>broadcasting password</strong> for your channel. It is kept strictly confidential inside this password-protected admin area and is <strong>never displayed to website visitors</strong>.
+                    </p>
+                  </div>
+
+                  {/* Stream Key Form */}
+                  <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h4 className="text-xs font-mono-tactical text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                        <Key className="w-4 h-4 text-amber-400" />
+                        <span>Active RTMP Stream Key</span>
+                      </h4>
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                        ADMIN PROTECTED
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] text-neutral-400 block font-sans">
+                        Enter your private YouTube Stream Key (e.g. from YouTube Studio &rarr; Stream settings):
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showRawKey ? 'text' : 'password'}
+                            value={adminStreamKey}
+                            onChange={(e) => setAdminStreamKey(e.target.value.trim())}
+                            placeholder="xxxx-xxxx-xxxx-xxxx-xxxx"
+                            className="w-full bg-neutral-950 border border-neutral-750 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none pr-20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRawKey((prev) => !prev)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono-tactical text-neutral-400 hover:text-neutral-200 px-1.5 py-0.5 rounded bg-neutral-850 hover:bg-neutral-800 cursor-pointer"
+                          >
+                            {showRawKey ? 'Hide' : 'Reveal'}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveAdminStreamKey}
+                          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
+                        >
+                          ✓ Save &amp; Link Key
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Copy RTMP Command */}
+                    <div className="p-3 rounded-lg bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono-tactical">
+                      <div className="flex items-center justify-between text-neutral-400 flex-wrap gap-2">
+                        <span>Full RTMP Target URL for OBS / Linux ffmpeg:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (adminStreamKey) {
+                              navigator.clipboard.writeText(`rtmp://a.rtmp.youtube.com/live2/${adminStreamKey}`);
+                              tacticalAudio.playConfirmChime();
+                              showToast('✓ Full RTMP OBS URL copied to clipboard');
+                            } else {
+                              showToast('Please enter a stream key first.');
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-750 text-cyan-300 text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy RTMP URL</span>
+                        </button>
+                      </div>
+                      <code className="text-neutral-300 block truncate text-[11px] bg-neutral-900 p-2 rounded border border-neutral-850">
+                        rtmp://a.rtmp.youtube.com/live2/{showRawKey ? (adminStreamKey || '<your-stream-key>') : maskStreamKey(adminStreamKey)}
+                      </code>
+                    </div>
+                  </div>
+
+                  {/* Security Best Practices: Resetting Exposed Keys */}
+                  <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-3 font-sans text-xs">
+                    <h4 className="font-display-tactical text-sm font-bold text-neutral-100 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>Security Best Practice: Resetting Your Key</span>
+                    </h4>
+                    <p className="text-neutral-300 leading-relaxed">
+                      If you ever pasted your stream key into a public chat or form before, someone else could theoretically push video to your stream. You can generate a 100% fresh, private key in 30 seconds:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1.5 text-neutral-300 pl-1 leading-relaxed">
+                      <li>
+                        Open <a href="https://studio.youtube.com" target="_blank" rel="noreferrer" className="text-amber-400 underline font-semibold">studio.youtube.com ↗</a> and click <strong>Go Live</strong>.
+                      </li>
+                      <li>
+                        Under <strong>Stream settings &rarr; Stream key</strong>, click the <strong>&ldquo;Reset&rdquo;</strong> button.
+                      </li>
+                      <li>
+                        Copy the new key and paste it into the box above, then click <strong>Save &amp; Link Key</strong>.
+                      </li>
+                      <li>
+                        Update your Linux script with the new key.
+                      </li>
+                    </ol>
+                    <p className="text-[11px] text-neutral-400 pt-1">
+                      Once reset, the old key is instantly revoked and cannot be used by anyone else.
+                    </p>
                   </div>
                 </div>
               )}

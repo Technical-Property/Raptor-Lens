@@ -241,13 +241,13 @@ export function extractYouTubeChannelInfo(input: string): YouTubeChannelInfo {
   };
 }
 
-export const ACTIVE_STATION_STREAM_KEY = 'z0t6-04g3-ftyd-21mq-7k05';
+export const ACTIVE_STATION_STREAM_KEY = '';
 
 export function getActiveStreamKey(): string {
   try {
-    return localStorage.getItem('raptorlens_stream_key') || ACTIVE_STATION_STREAM_KEY;
+    return localStorage.getItem('raptorlens_stream_key') || '';
   } catch {
-    return ACTIVE_STATION_STREAM_KEY;
+    return '';
   }
 }
 
@@ -255,6 +255,13 @@ export function setActiveStreamKey(key: string): void {
   try {
     localStorage.setItem('raptorlens_stream_key', key.trim());
   } catch {}
+}
+
+export function maskStreamKey(key: string): string {
+  if (!key) return '••••-••••-••••-••••';
+  const trimmed = key.trim();
+  if (trimmed.length < 8) return '••••••••••••';
+  return `${trimmed.slice(0, 4)}-••••-••••-${trimmed.slice(-4)}`;
 }
 
 /**
@@ -314,7 +321,7 @@ export function buildYouTubeEmbedSrc(options: {
 
   const cleanVideoId = (videoId || DEFAULT_CAMERA_VIDEO_ID).trim();
 
-  // If cleanVideoId is an RTMP stream key (e.g. z0t6-04g3-ftyd-21mq-7k05),
+  // If cleanVideoId is an RTMP stream key (e.g. xxxx-xxxx-xxxx-xxxx-xxxx),
   // seamlessly bridge it to the station's permanent YouTube Channel Live stream!
   if (isRtmpStreamKeyOrUrl(cleanVideoId)) {
     const targetChannel = (channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim()))
