@@ -117,7 +117,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         return DEFAULT_CAMERA_VIDEO_ID;
       }
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === '36w5VpxTmtk' || isRtmpStreamKeyOrUrl(saved)) {
+      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === '36w5VpxTmtk' || saved === 'UCI8_yRov8jX_M8q4p8uE47w' || isRtmpStreamKeyOrUrl(saved)) {
         return DEFAULT_CAMERA_VIDEO_ID;
       }
       return saved;
@@ -125,15 +125,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       return DEFAULT_CAMERA_VIDEO_ID;
     }
   });
-  const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
-    try {
-      const savedUrl = localStorage.getItem('raptorlens_channel_url') || '';
-      if (!savedUrl || savedUrl.includes('wUmvCR2YBMQ') || savedUrl.includes('36w5VpxTmtk')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
-      return savedUrl;
-    } catch {
-      return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
-    }
-  });
+  const [customChannelInput, setCustomChannelInput] = useState<string>('');
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
@@ -324,7 +316,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         setStationPrimaryVideoId(config.videoId);
         setCustomVideoId((prev) => {
           // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
-          const isGuestCam = POPULAR_CAMERA_PRESETS.slice(3).some((p) => p.videoId === prev);
+          const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
           if (!isGuestCam) {
             return config.videoId;
           }
@@ -1066,14 +1058,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
 
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                <a
-                  href={`https://studio.youtube.com/video/${activeVideoId}/edit`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow"
-                >
-                  <span>1. Enable in YouTube Studio ↗</span>
-                </a>
                 <button
                   type="button"
                   onClick={async () => {
@@ -1083,24 +1067,16 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     if (ok) {
                       setForceDirectLiveEmbed(true);
                       setPlayerRefreshKey((prev) => prev + 1);
-                      setSyncSuccessToast(`✓ Embedding verified! Stream ${activeVideoId} is now playing live.`);
+                      setSyncSuccessToast(`✓ Embedding verified! Station Live Camera is now playing live.`);
                     } else {
-                      setSyncSuccessToast(`Still blocked by YouTube (HTTP 401). Did you tick "Allow embedding" and click Save in YouTube Studio?`);
+                      setSyncSuccessToast(`Still blocked by YouTube (HTTP 401). Enable "Allow embedding" in YouTube Studio.`);
                     }
                     setTimeout(() => setSyncSuccessToast(null), 6000);
                   }}
                   className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
                 >
-                  ↻ 2. Re-Check Now
+                  ↻ Re-Check Stream Now
                 </button>
-                <a
-                  href={`https://www.youtube.com/live/${activeVideoId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors border border-neutral-700"
-                >
-                  <span>Watch on YouTube ↗</span>
-                </a>
               </div>
             </div>
 
@@ -1431,15 +1407,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     <span className="text-neutral-600 hidden sm:inline">|</span>
                     <span className="text-amber-300 font-bold hidden sm:inline">{activeRewindMarker.title}</span>
                   </>
-                ) : isRtmpStreamKeyOrUrl(activeVideoId) ? (
+                ) : isRtmpStreamKeyOrUrl(activeVideoId) || activeVideoId === DEFAULT_CAMERA_VIDEO_ID || activeVideoId === stationPrimaryVideoId ? (
                   <>
-                    <span className="text-emerald-400 font-bold">PRIMARY STATION CAM</span>
-                    <span className="text-neutral-600 hidden sm:inline">|</span>
-                    <span className="text-neutral-300 hidden sm:inline">Hackpen Hill &amp; Barbury Castle • @chalktech</span>
-                  </>
-                ) : activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
-                  <>
-                    <span className="text-emerald-400 font-bold">ROLLING STATION CAM</span>
+                    <span className="text-emerald-400 font-bold">STATION LIVE CAMERA</span>
                     <span className="text-neutral-600 hidden sm:inline">|</span>
                     <span className="text-neutral-300 hidden sm:inline">Hackpen Hill • Barbury Fort • Field • Perch</span>
                   </>
@@ -1450,19 +1420,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                     <span className="text-neutral-200">{POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.name || 'Live Stream'}</span>
                   </>
                 )}
-              </div>
-
-              {/* Live Watermark / Channel Link (Bottom-Right overlay) */}
-              <div className="absolute bottom-2 right-2 bg-neutral-950/85 backdrop-blur-md border border-neutral-800 px-2.5 py-1 rounded-lg text-[10px] font-mono-tactical text-neutral-300 flex items-center gap-1.5 shadow-lg">
-                <a
-                  href={resolvedChannelUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-red-400 hover:text-red-300 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                >
-                  <span>Watch on YouTube</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
               </div>
             </>
           )}
@@ -2642,16 +2599,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800 flex-wrap">
-              <a
-                href={`https://www.youtube.com/watch?v=${activeVideoId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-amber-300 border border-neutral-700 text-xs font-mono-tactical font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <span>Watch on YouTube ↗</span>
-              </a>
-
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800 flex-wrap">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
