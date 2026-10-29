@@ -95,16 +95,17 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   currentCallsign = 'FIELD-SCOUT',
 }) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string>(channels[0]?.id || 'stream-barbury-castle-livecam');
+  const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('raptorlens_station_primary_id') || localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID;
+    } catch {
+      return DEFAULT_CAMERA_VIDEO_ID;
+    }
+  });
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
-      const migrated = localStorage.getItem('raptorlens_stream_migration_v5');
-      if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
-        localStorage.setItem('raptorlens_stream_migration_v5', DEFAULT_CAMERA_VIDEO_ID);
-        localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
-        localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
-        localStorage.setItem('raptorlens_stream_mode', 'video');
-        return DEFAULT_CAMERA_VIDEO_ID;
-      }
+      const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
+      if (savedPrimary) return savedPrimary;
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
       if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === 'D9NvW7EA1B0') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
@@ -112,19 +113,11 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
       return DEFAULT_CAMERA_VIDEO_ID;
     }
   });
-  const [customChannelInput, setCustomChannelInput] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('raptorlens_channel_url') || '';
-      if (!saved || saved.includes('wUmvCR2YBMQ') || saved.includes('D9NvW7EA1B0')) return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
-      return saved;
-    } catch {
-      return `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`;
-    }
-  });
+  const [customChannelInput, setCustomChannelInput] = useState<string>('');
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video') return saved;
+      if (saved === 'video' || saved === 'channel') return saved;
       return 'video';
     } catch {
       return 'video';
@@ -137,13 +130,25 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   useEffect(() => {
     const unsub = subscribeToStationStreamConfig((config) => {
       if (config.videoId) {
+        setStationPrimaryVideoId(config.videoId);
         setCustomVideoId(config.videoId);
         if (config.channelUrl) {
           setCustomChannelInput(config.channelUrl);
         }
       }
     });
-    return () => unsub();
+    const handleWindowSync = (e: Event) => {
+      const customEvt = e as CustomEvent<{ videoId: string; channelUrl?: string; mode?: 'video' | 'channel' }>;
+      if (customEvt.detail?.videoId) {
+        setStationPrimaryVideoId(customEvt.detail.videoId);
+        setCustomVideoId(customEvt.detail.videoId);
+      }
+    };
+    window.addEventListener('raptorlens-station-stream-synced', handleWindowSync);
+    return () => {
+      unsub();
+      window.removeEventListener('raptorlens-station-stream-synced', handleWindowSync);
+    };
   }, []);
 
   useEffect(() => {
@@ -270,7 +275,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
 
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const currentChannel = channels.find((c) => c.id === selectedChannelId) || channels[0];
-  const activeVideoId = customVideoId.trim() || currentChannel.youtubeId;
+  const activeVideoId = customVideoId.trim() || stationPrimaryVideoId || currentChannel.youtubeId;
 
   useEffect(() => {
     let isMounted = true;
@@ -290,8 +295,6 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const effectiveEmbedVideoId =
     isRtmpStreamKeyOrUrl(activeVideoId)
       ? CHALKTECH_CHANNEL_ID
-      : isPrimaryEmbedBlocked && activeVideoId === DEFAULT_CAMERA_VIDEO_ID
-      ? CHALKTECH_VERIFIED_EMBED_ID
       : activeVideoId;
 
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentChannel.channelUrl || '');
@@ -577,7 +580,7 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                   onClick={() => {
                     tacticalAudio.playRadarPing(800 + idx * 50);
                     setSelectedChannelId(ch.id);
-                    setCustomVideoId('');
+                    setCustomVideoId(stationPrimaryVideoId);
                   }}
                   className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-3 cursor-pointer relative group ${
                     isSelected
@@ -771,11 +774,11 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
                   type="button"
                   onClick={() => {
                     tacticalAudio.playRadarPing(880);
-                    setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                    setCustomVideoId(stationPrimaryVideoId);
                   }}
                   className="px-2 py-0.5 rounded bg-neutral-950 hover:bg-neutral-800 border border-emerald-500/50 text-emerald-300 font-mono text-[10px] cursor-pointer transition-colors"
                 >
-                  + Official Station Cam ({DEFAULT_CAMERA_VIDEO_ID})
+                  + Official Station Cam ({stationPrimaryVideoId})
                 </button>
               </div>
             </div>

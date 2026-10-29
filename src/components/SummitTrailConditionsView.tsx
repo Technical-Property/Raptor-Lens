@@ -102,23 +102,34 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 }) => {
   const currentCam = LIVESTREAM_CHANNELS[0];
   const [playerRefreshKey, setPlayerRefreshKey] = useState<number>(0);
-  const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(DEFAULT_CAMERA_VIDEO_ID);
+  const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(() => {
+    try {
+      const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
+      if (savedPrimary && !isRtmpStreamKeyOrUrl(savedPrimary)) {
+        return savedPrimary;
+      }
+      const savedCustom = localStorage.getItem('raptorlens_custom_cam') || '';
+      const isGuest = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === savedCustom);
+      if (savedCustom && !isGuest && !isRtmpStreamKeyOrUrl(savedCustom)) {
+        return savedCustom;
+      }
+      return DEFAULT_CAMERA_VIDEO_ID;
+    } catch {
+      return DEFAULT_CAMERA_VIDEO_ID;
+    }
+  });
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
-      const migrated = localStorage.getItem('raptorlens_stream_migration_v9');
-      if (migrated !== DEFAULT_CAMERA_VIDEO_ID) {
-        localStorage.setItem('raptorlens_stream_migration_v9', DEFAULT_CAMERA_VIDEO_ID);
-        localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
-        localStorage.setItem('raptorlens_channel_url', `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`);
-        localStorage.setItem('raptorlens_stream_mode', 'video');
-        return DEFAULT_CAMERA_VIDEO_ID;
-      }
+      const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === '36w5VpxTmtk' || saved === 'UCI8_yRov8jX_M8q4p8uE47w' || isRtmpStreamKeyOrUrl(saved)) {
-        return DEFAULT_CAMERA_VIDEO_ID;
+      if (savedPrimary && (!saved || !POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === saved))) {
+        return savedPrimary;
+      }
+      if (!saved || saved === '9gkrkcqHQ78' || saved === 'wUmvCR2YBMQ' || saved === '36w5VpxTmtk' || saved === 'D9NvW7EA1B0' || saved === 'UCI8_yRov8jX_M8q4p8uE47w' || isRtmpStreamKeyOrUrl(saved)) {
+        return savedPrimary || DEFAULT_CAMERA_VIDEO_ID;
       }
       return saved;
     } catch {
@@ -130,9 +141,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
       if (saved === 'video' || saved === 'webcam' || saved === 'channel') return saved;
-      return 'channel';
+      return 'video';
     } catch {
-      return 'channel';
+      return 'video';
     }
   });
   const [showFeedInput, setShowFeedInput] = useState<boolean>(false);
@@ -309,11 +320,14 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     } catch {}
   }, [streamMode]);
 
-  // Subscribe to real-time station stream config in Firestore so when operator updates the YouTube Live link, all visitors get it immediately
+  // Subscribe to real-time station stream config in Firestore + immediate Admin Console sync events
   useEffect(() => {
-    const unsub = subscribeToStationStreamConfig((config) => {
+    const applySyncedConfig = (config: { videoId: string; channelUrl?: string; mode?: 'video' | 'channel' }) => {
       if (config.videoId && !isRtmpStreamKeyOrUrl(config.videoId)) {
         setStationPrimaryVideoId(config.videoId);
+        try {
+          localStorage.setItem('raptorlens_station_primary_id', config.videoId);
+        } catch {}
         setCustomVideoId((prev) => {
           // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
           const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
@@ -322,12 +336,33 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           }
           return prev;
         });
+        if (config.mode) {
+          setStreamMode(config.mode);
+        } else {
+          setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(config.videoId) ? 'channel' : 'video');
+        }
         if (config.channelUrl) {
           setCustomChannelInput(config.channelUrl);
         }
       }
-    });
-    return () => unsub();
+    };
+
+    const unsub = subscribeToStationStreamConfig(applySyncedConfig);
+
+    const handleWindowSync = (e: Event) => {
+      const customEvt = e as CustomEvent<{ videoId: string; channelUrl?: string; mode?: 'video' | 'channel' }>;
+      if (customEvt.detail?.videoId) {
+        applySyncedConfig(customEvt.detail);
+        setCustomVideoId(customEvt.detail.videoId);
+        setPlayerRefreshKey((prev) => prev + 1);
+      }
+    };
+    window.addEventListener('raptorlens-station-stream-synced', handleWindowSync);
+
+    return () => {
+      unsub();
+      window.removeEventListener('raptorlens-station-stream-synced', handleWindowSync);
+    };
   }, []);
 
   const handleSyncStationStream = async (rawInput: string) => {
@@ -405,10 +440,10 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   }, []);
 
   const activeVideoId = customVideoId.trim() || stationPrimaryVideoId || currentCam.youtubeId || DEFAULT_CAMERA_VIDEO_ID;
-  const isViewingPrimaryStation = activeVideoId === DEFAULT_CAMERA_VIDEO_ID || activeVideoId === stationPrimaryVideoId || activeVideoId === CHALKTECH_VERIFIED_EMBED_ID;
+  const isGuestCamActive = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === activeVideoId);
+  const isViewingPrimaryStation = !isGuestCamActive;
 
-  // Automatically check if YouTube has "Allow embedding" enabled on the target stream;
-  // If "Allow embedding" is unchecked (HTTP 401 on oEmbed), automatically play the verified @chalktech Barbury stream (D9NvW7EA1B0)
+  // Check if YouTube has "Allow embedding" enabled on the target stream
   useEffect(() => {
     let isMounted = true;
     const verifyEmbedStatus = async () => {
@@ -432,8 +467,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const effectiveEmbedVideoId =
     streamMode === 'channel' || isRtmpStreamKeyOrUrl(activeVideoId) || /^UC[a-zA-Z0-9_-]{22}$/.test(activeVideoId.trim())
       ? (activeVideoId.startsWith('UC') ? activeVideoId : CHALKTECH_CHANNEL_ID)
-      : isPrimaryEmbedBlocked && !forceDirectLiveEmbed
-      ? CHALKTECH_VERIFIED_EMBED_ID
       : activeVideoId;
 
   const channelInfo = extractYouTubeChannelInfo(customChannelInput || currentCam.channelUrl || '');
@@ -494,6 +527,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     tacticalAudio.playConfirmChime();
 
     const now = new Date();
+    const ukTime = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
     const speciesIdMap: Record<string, string> = {
       'Red Kite': 'red-kite',
       'Common Buzzard': 'common-buzzard',
@@ -504,17 +538,30 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       'Raven': 'common-buzzard',
     };
 
-    const resolvedLocation = `Barbury Cam (${quickSpotZone})`;
+    const isWalkerLog =
+      quickSpotSpecies.toLowerCase().includes('walker') ||
+      quickSpotSpecies.toLowerCase().includes('hiker') ||
+      quickSpotSpecies.toLowerCase().includes('rider');
+    const isSkyLog =
+      quickSpotSpecies.toLowerCase().includes('sky') ||
+      quickSpotSpecies.toLowerCase().includes('sunset') ||
+      quickSpotSpecies.toLowerCase().includes('cloud');
+    const markerCat: 'raptor' | 'sky' | 'walkers' = isWalkerLog ? 'walkers' : isSkyLog ? 'sky' : 'raptor';
+
+    const resolvedLocation = `Station Cam (${quickSpotZone})`;
+    const privacySuffix = isWalkerLog
+      ? ' • Distant 3.0 km ridge silhouette only (no personal/facial ID).'
+      : '';
     const resolvedSummary =
-      quickSpotNotes.trim() ||
-      `Spotted ${quickSpotCount}x ${quickSpotSpecies} on ${quickSpotZone} along the Barbury Ridgeway scarp.`;
+      (quickSpotNotes.trim() ||
+        `Spotted ${quickSpotCount}x ${quickSpotSpecies} on ${quickSpotZone} at ${ukTime} UK.`) + privacySuffix;
 
     if (onSaveSighting) {
       const newSighting: SightingLog = {
-        id: `log-cam-${Date.now()}`,
+        id: `dvr-cam-${Date.now()}`,
         timestamp: now.toISOString(),
         date: now.toISOString().split('T')[0],
-        time: now.toTimeString().slice(0, 5),
+        time: ukTime,
         speciesId: speciesIdMap[quickSpotSpecies] || 'red-kite',
         speciesName: quickSpotSpecies,
         locationName: resolvedLocation,
@@ -528,7 +575,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             ? 'Hover Hunting'
             : 'Escarpment Lift',
         altitudeM: quickSpotZone === 'Perch View' ? 5 : 45,
-        opticalGear: 'Station Cam / Trail Spotter',
+        opticalGear: 'Station Cam Live DVR',
         observerCallsign: currentCallsign,
         observerRank: 'Verified Spotter',
         notes: resolvedSummary,
@@ -538,6 +585,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         thermalStrength: weather.soaringLiftRating === 'EXCELLENT' ? 'Strong' : 'Moderate',
         verificationStatus: 'Corroborated by Peers',
         corroborations: [],
+        markerCategory: markerCat,
         auditTrail: [
           {
             timestamp: now.toISOString(),
@@ -950,12 +998,12 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             <span className="font-bold text-neutral-100">
               {isLocalIpAddress(activeVideoId)
                 ? 'Station Hardware (Local LAN)'
-                : activeVideoId === DEFAULT_CAMERA_VIDEO_ID
-                ? 'Live Ridgeway Station Webcam'
+                : isViewingPrimaryStation
+                ? 'Station Live Camera'
                 : POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.name || 'Live Raptor Camera'}
             </span>
             <span className="text-xs text-amber-300/90 hidden sm:inline">
-              {activeVideoId === DEFAULT_CAMERA_VIDEO_ID
+              {isViewingPrimaryStation
                 ? '· Hackpen Hill · Barbury Fort · Field · Perch'
                 : `· ${POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.location || '24/7 Live Feed'}`}
             </span>
@@ -1105,17 +1153,18 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               Select Camera:
             </span>
             {POPULAR_CAMERA_PRESETS.map((cam) => {
-              const isSelected = activeVideoId === cam.videoId;
-              const isPrimaryStation = cam.videoId === DEFAULT_CAMERA_VIDEO_ID;
+              const isPrimaryStation = cam.id === 'raptorlens-station';
+              const targetVideoId = isPrimaryStation ? stationPrimaryVideoId : cam.videoId;
+              const isSelected = isPrimaryStation ? isViewingPrimaryStation : activeVideoId === cam.videoId;
               return (
                 <button
                   key={cam.id}
                   type="button"
                   onClick={() => {
                     tacticalAudio.playRadarPing(880);
-                    setCustomVideoId(cam.videoId);
+                    setCustomVideoId(targetVideoId);
                     setCustomChannelInput(cam.channelUrl);
-                    setStreamMode('video');
+                    setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(targetVideoId) ? 'channel' : 'video');
                   }}
                   className={`min-h-[36px] sm:min-h-0 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition-all flex items-center gap-1.5 shrink-0 ${
                     isSelected
@@ -1153,17 +1202,18 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               <span className="text-neutral-400 text-[11px] block">Select Primary Station Cam or Guest Live Raptor Cams:</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {POPULAR_CAMERA_PRESETS.map((preset) => {
-                  const isCurrent = activeVideoId === preset.videoId;
-                  const isPrimary = preset.videoId === DEFAULT_CAMERA_VIDEO_ID;
+                  const isPrimary = preset.id === 'raptorlens-station';
+                  const targetVideoId = isPrimary ? stationPrimaryVideoId : preset.videoId;
+                  const isCurrent = isPrimary ? isViewingPrimaryStation : activeVideoId === preset.videoId;
                   return (
                     <button
                       key={preset.id}
                       type="button"
                       onClick={() => {
                         tacticalAudio.playRadarPing(880);
-                        setCustomVideoId(preset.videoId);
+                        setCustomVideoId(targetVideoId);
                         setCustomChannelInput(preset.channelUrl);
-                        setStreamMode('video');
+                        setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(targetVideoId) ? 'channel' : 'video');
                       }}
                       className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                         isCurrent
@@ -1376,8 +1426,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               <button
                 onClick={() => {
                   tacticalAudio.playRadarPing(800);
-                  setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
-                  setStreamMode('video');
+                  setCustomVideoId(stationPrimaryVideoId);
+                  setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(stationPrimaryVideoId) ? 'channel' : 'video');
                 }}
                 className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs font-mono-tactical transition-colors cursor-pointer"
               >
@@ -1471,7 +1521,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         )}
 
         {/* Smart After-Dark / Night Operations Notice (Auto-activates after UK sunset) */}
-        {activeVideoId === DEFAULT_CAMERA_VIDEO_ID && weather.isAfterDark && (
+        {isViewingPrimaryStation && weather.isAfterDark && (
           <div className="px-3.5 py-2.5 bg-indigo-950/60 border-t border-indigo-500/30 flex items-center justify-between gap-3 flex-wrap text-xs font-mono-tactical">
             <div className="flex items-center gap-2.5">
               <Moon className="w-4 h-4 text-indigo-300 shrink-0" />
@@ -1494,7 +1544,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         )}
 
         {/* Station Cam Rolling 4-View Reference Guide + Live DVR Rewind Markers */}
-        {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? (
+        {isViewingPrimaryStation ? (
           <div className="p-3 sm:p-4 bg-neutral-900/90 border-t border-neutral-800 space-y-3.5 text-xs font-mono-tactical">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
@@ -1842,12 +1892,12 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               type="button"
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
-                setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
-                setStreamMode('video');
+                setCustomVideoId(stationPrimaryVideoId);
+                setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(stationPrimaryVideoId) ? 'channel' : 'video');
               }}
               className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors shadow-sm whitespace-nowrap"
             >
-              ↩ Back to Station Cam (Rolling Tour)
+              ↩ Back to Station Live Camera
             </button>
           </div>
         )}
@@ -1861,15 +1911,15 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-neutral-100">
-                  {POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.channelName || currentCam.channelName}
+                  {isViewingPrimaryStation ? 'RaptorLens UK Station Broadcast' : POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.channelName || currentCam.channelName}
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  {activeVideoId === DEFAULT_CAMERA_VIDEO_ID ? 'OFFICIAL STATION CAM' : 'PARTNER RAPTOR CAM'}
+                  {isViewingPrimaryStation ? 'OFFICIAL STATION CAM' : 'PARTNER RAPTOR CAM'}
                 </span>
               </div>
               <p className="text-[10px] text-neutral-400 font-sans mt-0.5">
-                {activeVideoId === DEFAULT_CAMERA_VIDEO_ID
-                  ? `Rolling PTZ tour: Hackpen Hill • Barbury Fort • Field • Perch (ID: ${activeVideoId})`
+                {isViewingPrimaryStation
+                  ? `Station Live Camera: Hackpen Hill • Barbury Fort • Field • Perch (Stream ID: ${activeVideoId})`
                   : `${POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.location || 'Live Raptor Broadcast'} • Stream ID: ${activeVideoId}`}
               </p>
             </div>
@@ -2451,19 +2501,38 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
 
             <form onSubmit={handleQuickSpotSubmit} className="space-y-3 font-mono-tactical text-xs">
               <div>
-                <label className="text-neutral-400 block mb-1">RAPTOR OR WILDLIFE SPECIES</label>
+                <label className="text-neutral-400 block mb-1">WHAT DID YOU SPOT ON CAM / TRAIL?</label>
                 <select
                   value={quickSpotSpecies}
-                  onChange={(e) => setQuickSpotSpecies(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuickSpotSpecies(val);
+                    if (val.includes('Barbury')) {
+                      setQuickSpotZone('Barbury Fort View');
+                    }
+                  }}
                   className="w-full bg-neutral-950 border border-neutral-700 rounded-lg p-2 text-neutral-100 font-sans text-xs focus:outline-none focus:border-amber-500"
                 >
-                  <option value="Red Kite">Red Kite (Forked tail, kettling)</option>
-                  <option value="Common Buzzard">Common Buzzard (Broad fan tail)</option>
-                  <option value="Common Kestrel">Common Kestrel (Wind-hovering)</option>
-                  <option value="Peregrine Falcon">Peregrine Falcon (High-speed stoop)</option>
-                  <option value="Hen Harrier">Hen Harrier (Ground-quartering)</option>
-                  <option value="Barn Owl">Barn Owl (Crepuscular ghost)</option>
-                  <option value="Raven">Common Raven (Diamond tail)</option>
+                  <optgroup label="🦅 Birds of Prey &amp; Wildlife">
+                    <option value="Red Kite">Red Kite (Forked tail, kettling)</option>
+                    <option value="Common Buzzard">Common Buzzard (Broad fan tail)</option>
+                    <option value="Common Kestrel">Common Kestrel (Wind-hovering)</option>
+                    <option value="Peregrine Falcon">Peregrine Falcon (High-speed stoop)</option>
+                    <option value="Hen Harrier">Hen Harrier (Ground-quartering)</option>
+                    <option value="Barn Owl">Barn Owl (Crepuscular ghost)</option>
+                    <option value="Raven">Common Raven (Diamond tail)</option>
+                  </optgroup>
+                  <optgroup label="🥾 Summit Walkers &amp; Ridgeway Trail (3km Silhouette)">
+                    <option value="Walkers on Barbury Summit (Silhouette)">🥾 Walkers on Barbury Fort Summit</option>
+                    <option value="Dog Walkers on Barbury Ramparts">🐕 Dog Walkers on Barbury Ramparts</option>
+                    <option value="Ridgeway Trail Hikers on Crest">🚶 Ridgeway Trail Hikers on Crest</option>
+                    <option value="Riders on Hackpen Chalk Gallops">🐎 Riders on Hackpen Chalk Gallops</option>
+                  </optgroup>
+                  <optgroup label="🌅 Sky &amp; Downland Weather">
+                    <option value="Golden Hour Sunset Sky">🌅 Golden Hour / Sunset Glow</option>
+                    <option value="Dramatic Sunbeams & Clouds">⛅ Dramatic Sunbeams &amp; Clouds</option>
+                    <option value="Ridge Cloud Inversion & Mist">☁️ Cloud Inversion &amp; Mist</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -2558,33 +2627,37 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   <span>1-Click Live Raptor Feeds:</span>
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono-tactical text-xs">
-                  {POPULAR_CAMERA_PRESETS.slice(0, 4).map((cam) => (
-                    <button
-                      key={cam.id}
-                      type="button"
-                      onClick={() => {
-                        tacticalAudio.playRadarPing(880);
-                        setCustomVideoId(cam.videoId);
-                        setCustomChannelInput(cam.channelUrl);
-                        setStreamMode('video');
-                        setShowTroubleshootModal(false);
-                      }}
-                      className="p-2 rounded-lg bg-neutral-950 hover:bg-neutral-800 border border-amber-500/50 text-amber-300 text-left cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="truncate">{cam.shortLabel}</span>
-                      <span className="text-[10px] text-emerald-400 font-bold shrink-0 ml-1">LIVE</span>
-                    </button>
-                  ))}
+                  {POPULAR_CAMERA_PRESETS.slice(0, 4).map((cam) => {
+                    const isPrimary = cam.id === 'raptorlens-station';
+                    const targetVideoId = isPrimary ? stationPrimaryVideoId : cam.videoId;
+                    return (
+                      <button
+                        key={cam.id}
+                        type="button"
+                        onClick={() => {
+                          tacticalAudio.playRadarPing(880);
+                          setCustomVideoId(targetVideoId);
+                          setCustomChannelInput(cam.channelUrl);
+                          setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(targetVideoId) ? 'channel' : 'video');
+                          setShowTroubleshootModal(false);
+                        }}
+                        className="p-2 rounded-lg bg-neutral-950 hover:bg-neutral-800 border border-amber-500/50 text-amber-300 text-left cursor-pointer flex items-center justify-between"
+                      >
+                        <span className="truncate">{cam.shortLabel}</span>
+                        <span className="text-[10px] text-emerald-400 font-bold shrink-0 ml-1">LIVE</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="space-y-2 font-mono-tactical text-[11px]">
                 <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
                   <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <span>1. Rolling Station Cam Tour:</span>
+                    <span>1. Station Live Camera:</span>
                   </div>
                   <p className="font-sans text-neutral-400">
-                    The primary Station Cam automatically cycles across four views: <strong>Hackpen Hill View</strong>, <strong>Barbury Fort View</strong>, <strong>Field View</strong>, and <strong>Perch View</strong>.
+                    The primary Station Live Camera automatically cycles across four views: <strong>Hackpen Hill View</strong>, <strong>Barbury Fort View</strong>, <strong>Field View</strong>, and <strong>Perch View</strong>.
                   </p>
                 </div>
 
@@ -2605,8 +2678,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   type="button"
                   onClick={() => {
                     tacticalAudio.playRadarPing(880);
-                    setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
-                    setStreamMode('video');
+                    setCustomVideoId(stationPrimaryVideoId);
+                    setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(stationPrimaryVideoId) ? 'channel' : 'video');
                     setShowTroubleshootModal(false);
                   }}
                   className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs font-mono-tactical cursor-pointer transition-colors shadow-sm"

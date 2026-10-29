@@ -63,7 +63,7 @@ import {
   checkYouTubeVideoEmbeddable,
   maskStreamKey
 } from '../utils/youtube';
-import { saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
+import { saveStationStreamConfigToFirestore, subscribeToStationStreamConfig } from '../services/sightingsFirestore';
 
 interface AdminMetricsModalProps {
   isOpen: boolean;
@@ -125,7 +125,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
   const [showRawKey, setShowRawKey] = useState<boolean>(false);
   const [adminBroadcastUrl, setAdminBroadcastUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID;
+      return localStorage.getItem('raptorlens_station_primary_id') || localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID;
     } catch {
       return DEFAULT_CAMERA_VIDEO_ID;
     }
@@ -138,6 +138,19 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
     setTimeout(() => setAdminToast(null), 4500);
   };
 
+  // Subscribe to Firestore station config so Admin Console always reflects the live synced ID
+  useEffect(() => {
+    const unsub = subscribeToStationStreamConfig((config) => {
+      if (config.videoId) {
+        setAdminBroadcastUrl(config.videoId);
+        try {
+          localStorage.setItem('raptorlens_station_primary_id', config.videoId);
+        } catch {}
+      }
+    });
+    return () => unsub();
+  }, []);
+
   // Reload events on open
   useEffect(() => {
     if (isOpen) {
@@ -147,7 +160,11 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
       setBlockedSpamCount(getBlockedSpamCount());
       setAdminStreamKey(getActiveStreamKey());
       try {
-        setAdminBroadcastUrl(localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID);
+        setAdminBroadcastUrl(
+          localStorage.getItem('raptorlens_station_primary_id') ||
+            localStorage.getItem('raptorlens_custom_cam') ||
+            DEFAULT_CAMERA_VIDEO_ID
+        );
       } catch {}
     }
   }, [isOpen]);
@@ -168,26 +185,39 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
     const nextUrl = isChannel
       ? `https://www.youtube.com/channel/${extractedId}/live`
       : `https://youtube.com/live/${extractedId}`;
+    const nextMode = isChannel ? 'channel' : 'video';
 
     const embedOk = await checkYouTubeVideoEmbeddable(extractedId);
     setEmbedCheckStatus(embedOk ? 'ok' : 'blocked');
 
     try {
+      localStorage.setItem('raptorlens_station_primary_id', extractedId);
       localStorage.setItem('raptorlens_custom_cam', extractedId);
       localStorage.setItem('raptorlens_channel_url', nextUrl);
-      localStorage.setItem('raptorlens_stream_mode', isChannel ? 'channel' : 'video');
+      localStorage.setItem('raptorlens_stream_mode', nextMode);
     } catch {}
+
+    window.dispatchEvent(
+      new CustomEvent('raptorlens-station-stream-synced', {
+        detail: {
+          videoId: extractedId,
+          channelUrl: nextUrl,
+          mode: nextMode,
+        },
+      })
+    );
 
     await saveStationStreamConfigToFirestore({
       videoId: extractedId,
       channelUrl: nextUrl,
-      mode: isChannel ? 'channel' : 'video',
+      mode: nextMode,
       callsign: currentCallsign || 'STATION-OPERATOR',
     });
 
+    setAdminBroadcastUrl(extractedId);
     setIsSyncingBroadcast(false);
     if (embedOk) {
-      showToast(`✓ Broadcast (${extractedId}) synced to Firestore for all website visitors!`);
+      showToast(`✓ Broadcast (${extractedId}) synced to website for all visitors!`);
     } else {
       showToast(`⚠️ Synced ${extractedId}, but YouTube reports embedding disabled (HTTP 401).`);
     }
