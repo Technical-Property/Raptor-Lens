@@ -201,8 +201,10 @@ export function subscribeToObservers(
 
 export async function saveObserverToFirestore(observer: ObserverProfile): Promise<void> {
   try {
-    // Strip undefined fields before writing to Firestore
+    // Strip undefined fields and private credentials (passcode, contactEmail) before writing to public Firestore
     const clean = JSON.parse(JSON.stringify(observer));
+    delete clean.passcode;
+    delete clean.contactEmail;
     await setDoc(doc(db, OBSERVERS_COLLECTION, observer.id), clean, { merge: true });
   } catch (err) {
     console.warn('Error saving observer to Firestore:', err);

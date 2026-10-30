@@ -278,8 +278,8 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
     tacticalAudio.playRadarPing(nextState ? 880 : 600);
     showToast(
       nextState
-        ? `✓ Email notifications RESUMED for ${ADMIN_NOTIFICATION_EMAIL}`
-        : `⏸ Email notifications PAUSED — sign-ups will still be saved locally`
+        ? '✓ Email notifications RESUMED for Station Operator Inbox'
+        : '⏸ Email notifications PAUSED — sign-ups will still be saved locally'
     );
   };
 
@@ -963,7 +963,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Instant Email Alert Banner & Anti-Spam Shield for jmzmccormick@gmail.com */}
+                  {/* Instant Email Alert Banner & Anti-Spam Shield */}
                   <div className={`p-3.5 rounded-xl border flex flex-col lg:flex-row lg:items-center justify-between gap-3 transition-colors ${
                     alertsEnabled
                       ? 'bg-emerald-950/30 border-emerald-500/40'
@@ -980,7 +980,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       <div className="space-y-1">
                         <div className="text-xs font-mono-tactical font-bold flex items-center gap-2 flex-wrap">
                           <span className={alertsEnabled ? 'text-emerald-300' : 'text-neutral-300'}>
-                            Sign-Up Email Alerts ({ADMIN_NOTIFICATION_EMAIL}): {alertsEnabled ? 'ACTIVE' : 'PAUSED'}
+                            Sign-Up Email Alerts (Station Operator Inbox): {alertsEnabled ? 'ACTIVE' : 'PAUSED'}
                           </span>
                           <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
                             ANTI-SPAM SHIELD ON
@@ -1109,7 +1109,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       <span>Station Operator Broadcaster Console (Password Protected)</span>
                     </div>
                     <p className="text-neutral-200 text-xs font-sans leading-relaxed">
-                      All broadcast links and RTMP credentials are <strong>strictly locked behind this admin panel</strong>. Public visitors cannot inject arbitrary videos or overwrite the station stream.
+                      All broadcast links and RTMP credentials are <strong>strictly locked behind this admin panel</strong>. Zero private keys, camera passwords, or local IP addresses are stored in website code or shared publicly.
                     </p>
                   </div>
 
@@ -1224,17 +1224,17 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       <div className="flex items-center gap-2">
                         <Key className="w-4 h-4 text-amber-400" />
                         <h4 className="text-xs font-mono-tactical text-neutral-200 uppercase tracking-wider font-bold">
-                          2. Private RTMP Stream Key (Broadcaster Encoder Credentials)
+                          2. Private RTMP Stream Key (Local Browser Only — Never Sent to Cloud)
                         </h4>
                       </div>
                       <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
-                        CONFIDENTIAL
+                        LOCAL-ONLY • REDACTED
                       </span>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-[11px] text-neutral-400 block font-sans">
-                        Enter your private YouTube Stream Key (e.g. from YouTube Studio &rarr; Stream settings):
+                        Optional: Store your private YouTube Stream Key in this browser only (never uploaded or shared):
                       </label>
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <div className="relative flex-1">
@@ -1258,8 +1258,23 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           onClick={handleSaveAdminStreamKey}
                           className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
                         >
-                          ✓ Save Key
+                          ✓ Save Locally
                         </button>
+                        {adminStreamKey && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdminStreamKey('');
+                              setActiveStreamKey('');
+                              setShowRawKey(false);
+                              tacticalAudio.playRadarPing(700);
+                              showToast('✓ Stream key wiped from browser memory.');
+                            }}
+                            className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap"
+                          >
+                            Wipe Key
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1285,7 +1300,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         </button>
                       </div>
                       <code className="text-neutral-300 block truncate text-[11px] bg-neutral-900 p-2 rounded border border-neutral-850">
-                        rtmp://a.rtmp.youtube.com/live2/{showRawKey ? (adminStreamKey || '<your-stream-key>') : maskStreamKey(adminStreamKey)}
+                        rtmp://a.rtmp.youtube.com/live2/{showRawKey ? (adminStreamKey || '<YOUR_STREAM_KEY>') : maskStreamKey(adminStreamKey)}
                       </code>
                     </div>
                   </div>
@@ -1348,7 +1363,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            const key = adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e';
+                            const key = adminStreamKey || '<YOUR_STREAM_KEY>';
                             const cmd = `ffmpeg -re -f v4l2 -framerate 30 -video_size 1920x1080 -i /dev/video0 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
                             navigator.clipboard.writeText(cmd);
                             tacticalAudio.playConfirmChime();
@@ -1365,35 +1380,37 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
   -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
   -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 \\
   -c:a aac -b:a 128k -ar 44100 \\
-  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e') : maskStreamKey(adminStreamKey)}"`}
+  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '<YOUR_STREAM_KEY>') : maskStreamKey(adminStreamKey)}"`}
                       </pre>
                     </div>
 
                     {/* Option B: RTSP IP Camera */}
                     <div className="p-3 rounded-lg bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono-tactical">
                       <div className="flex items-center justify-between text-neutral-300 flex-wrap gap-2">
-                        <span className="font-bold text-cyan-300">Option B: Linux RTSP IP Camera &rarr; YouTube Live</span>
+                        <span className="font-bold text-cyan-300">Option B: Linux RTSP IP Camera &rarr; YouTube Live (Placeholder Credentials)</span>
                         <button
                           type="button"
                           onClick={() => {
-                            const key = adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e';
-                            const cmd = `ffmpeg -rtsp_transport tcp -i "rtsp://USER:PASS@CAMERA_IP:554/stream1" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 -map 0:v:0 -map 1:a:0 -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
+                            const key = adminStreamKey || '<YOUR_STREAM_KEY>';
+                            const cmd = `ffmpeg -thread_queue_size 4096 -rtsp_transport tcp -i "rtsp://CAMERA_USER:CAMERA_PASS@CAMERA_IP:554/Streaming/Channels/101" -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -map 0:v:0 -map 1:a:0 -vf "setpts=PTS-STARTPTS" -af "asetpts=PTS-STARTPTS" -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -r 25 -g 50 -c:a aac -b:a 128k -ar 44100 -shortest -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
                             navigator.clipboard.writeText(cmd);
                             tacticalAudio.playConfirmChime();
-                            showToast('✓ Copied Linux RTSP Camera FFmpeg command!');
+                            showToast('✓ Copied sanitized RTSP FFmpeg template!');
                           }}
                           className="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Copy className="w-3 h-3" />
-                          <span>Copy RTSP Command</span>
+                          <span>Copy RTSP Template</span>
                         </button>
                       </div>
                       <pre className="text-neutral-300 overflow-x-auto text-[10px] bg-neutral-900 p-2.5 rounded border border-neutral-850 whitespace-pre-wrap break-all leading-relaxed">
-{`ffmpeg -rtsp_transport tcp -i "rtsp://USER:PASS@CAMERA_IP:554/stream1" \\
-  -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
-  -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 \\
-  -c:a aac -b:a 128k -ar 44100 -map 0:v:0 -map 1:a:0 \\
-  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e') : maskStreamKey(adminStreamKey)}"`}
+{`ffmpeg -thread_queue_size 4096 -rtsp_transport tcp \\
+  -i "rtsp://CAMERA_USER:CAMERA_PASS@CAMERA_IP:554/Streaming/Channels/101" \\
+  -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
+  -map 0:v:0 -map 1:a:0 -vf "setpts=PTS-STARTPTS" -af "asetpts=PTS-STARTPTS" \\
+  -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -r 25 -g 50 \\
+  -c:a aac -b:a 128k -ar 44100 -shortest \\
+  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '<YOUR_STREAM_KEY>') : maskStreamKey(adminStreamKey)}"`}
                       </pre>
                     </div>
                   </div>

@@ -131,7 +131,7 @@ function recordEmailLog(entry: EmailNotificationLog) {
 }
 
 /**
- * Sends a real email notification to jmzmccormick@gmail.com via FormSubmit AJAX endpoint
+ * Sends a real email notification to the station operator via FormSubmit AJAX endpoint
  * ONLY when a genuine, human-verified, non-duplicate, non-spam new observer registers.
  */
 export async function sendObserverSignupEmail(
@@ -148,7 +148,7 @@ export async function sendObserverSignupEmail(
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject: `[Paused] Sign-up: ${profile.callsign}`,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -166,7 +166,7 @@ export async function sendObserverSignupEmail(
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject: `[Blocked Bot] Unverified sign-up: ${profile.callsign}`,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -185,7 +185,7 @@ export async function sendObserverSignupEmail(
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject: `[Blocked Spam] Suspicious content in ${profile.callsign}`,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -213,7 +213,7 @@ export async function sendObserverSignupEmail(
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject: `[Rate-Limited] ${profile.callsign}`,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -269,7 +269,7 @@ export async function sendObserverSignupEmail(
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -282,14 +282,14 @@ export async function sendObserverSignupEmail(
       message:
         data.message ||
         (isSuccess
-          ? `Notification email sent to ${ADMIN_NOTIFICATION_EMAIL}`
+          ? 'Notification email sent to Station Operator Inbox'
           : 'Could not dispatch email notification.'),
     };
   } catch (err: any) {
     recordEmailLog({
       id: `email-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject,
       callsign: profile.callsign,
       fullName: profile.fullName,
@@ -304,7 +304,7 @@ export async function sendObserverSignupEmail(
 }
 
 /**
- * Sends a test notification email so the station administrator (jmzmccormick@gmail.com)
+ * Sends a test notification email so the station administrator
  * can activate/verify delivery with 1 click.
  */
 export async function sendTestNotificationEmail(): Promise<{ ok: boolean; message: string }> {
@@ -315,7 +315,7 @@ export async function sendTestNotificationEmail(): Promise<{ ok: boolean; messag
     _captcha: 'false',
     _honey: '',
     Alert: 'RaptorLens UK Sign-Up Email Notification Active',
-    Recipient: ADMIN_NOTIFICATION_EMAIL,
+    Recipient: 'Station Operator Inbox',
     Anti_Spam_Shield: 'Enabled (30m cooldown, 3/day cap per device, ornithology CAPTCHA, link/keyword filter)',
     Timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Europe/London' }),
   };
@@ -336,7 +336,7 @@ export async function sendTestNotificationEmail(): Promise<{ ok: boolean; messag
     recordEmailLog({
       id: `email-test-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      recipient: ADMIN_NOTIFICATION_EMAIL,
+      recipient: 'Station Operator Inbox',
       subject,
       callsign: 'STATION-ADMIN-TEST',
       fullName: 'Test Verification',
@@ -349,7 +349,7 @@ export async function sendTestNotificationEmail(): Promise<{ ok: boolean; messag
       message:
         data.message ||
         (isSuccess
-          ? `Test email dispatched to ${ADMIN_NOTIFICATION_EMAIL}! Check your inbox (and spam folder) to confirm.`
+          ? 'Test email dispatched to Station Operator Inbox! Check your inbox (and spam folder) to confirm.'
           : `Failed with HTTP ${response.status}`),
     };
   } catch (err: any) {
@@ -361,7 +361,7 @@ export async function sendTestNotificationEmail(): Promise<{ ok: boolean; messag
 }
 
 /**
- * Sends Contact & Station Liaison form submissions to jmzmccormick@gmail.com
+ * Sends Contact & Station Liaison form submissions to the station operator
  * with honeypot, velocity, content-spam, and rate-limit protection.
  */
 export async function sendContactLiaisonEmail(form: {

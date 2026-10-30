@@ -5,18 +5,18 @@
  */
 
 // Verified 24/7 active live raptor & wildlife streams
-export const CHALKTECH_CHANNEL_ID = 'UCIndyyYl6gizIAxgLXAfVyw'; // Official @chalktech YouTube Channel ID
-export const CHALKTECH_LIVE_STREAM_ID = 'EpVJRK-RWrY'; // Current active @chalktech live broadcast session
-export const CHALKTECH_VERIFIED_EMBED_ID = 'D9NvW7EA1B0'; // Verified embed-enabled @chalktech Hackpen Hill & Barbury Castle stream
-export const DEFAULT_CAMERA_VIDEO_ID = 'EpVJRK-RWrY'; // Official RaptorLens UK Station Live Stream
-export const RAPTORLENS_STATION_VIDEO_ID = 'EpVJRK-RWrY'; // Official RaptorLens UK Live Cam
+export const CHALKTECH_CHANNEL_ID = 'UCIndyyYl6gizIAxgLXAfVyw'; // Station YouTube Channel ID
+export const CHALKTECH_LIVE_STREAM_ID = 'jDkhKX5-i_g'; // Current active live broadcast session
+export const CHALKTECH_VERIFIED_EMBED_ID = 'D9NvW7EA1B0'; // Verified embed-enabled Hackpen Hill & Barbury Castle stream
+export const DEFAULT_CAMERA_VIDEO_ID = 'jDkhKX5-i_g'; // Official RaptorLens UK Station Live Stream
+export const RAPTORLENS_STATION_VIDEO_ID = 'jDkhKX5-i_g'; // Official RaptorLens UK Live Cam
 export const UK_OWL_KESTREL_VIDEO_ID = 'q28Q9_qzqyg'; // Robert E Fuller UK Barn Owl, Kestrel & Tawny Owl Live Cam
 export const PEREGRINE_UK_VIDEO_ID = 'GAxREl6-fJs';   // Buckinghamshire UK Peregrine Falcon Cam 1
 export const OSPREY_UK_VIDEO_ID = 'V08ET209nvU';       // Rutland Osprey Project (Manton Bay, UK) Live Cam
 export const EAGLE_LIVE_VIDEO_ID = 'B4-L2nfGcuE';      // Big Bear Bald Eagle Live Nest (Cam 1)
 export const EAGLE_WIDE_VIDEO_ID = '41eq4VzCYc4';      // Big Bear Bald Eagle Wide Lookout (Cam 2)
 export const CORNELL_FEEDER_VIDEO_ID = 'x10vL6_47Dw';  // Cornell Lab Live FeederWatch
-export const DEMO_NATURE_VIDEO_ID = 'D9NvW7EA1B0';     // Fallback verified @chalktech Barbury & Hackpen stream
+export const DEMO_NATURE_VIDEO_ID = 'D9NvW7EA1B0';     // Fallback verified Barbury & Hackpen stream
 export const DEMO_LIVE_VIDEO_ID = '21X5lGlDOfg';       // NASA Earth Live HD broadcast
 
 /**
@@ -57,7 +57,7 @@ export const POPULAR_CAMERA_PRESETS: CameraPresetOption[] = [
     name: 'Station Live Camera',
     shortLabel: '📡 Station Live Camera',
     badge: 'PRIMARY STATION',
-    videoId: 'EpVJRK-RWrY',
+    videoId: 'jDkhKX5-i_g',
     channelName: 'RaptorLens UK Station Broadcast',
     channelUrl: '',
     species: 'Red Kite, Buzzard, Kestrel & Ridge Weather',

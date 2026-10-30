@@ -120,7 +120,13 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
-  const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(true);
+  const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('raptorlens_station_primary_id') === 'OFFLINE';
+    } catch {
+      return false;
+    }
+  });
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
@@ -382,22 +388,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     if (isRtmpStreamKeyOrUrl(trimmed)) {
       tacticalAudio.playConfirmChime();
       setActiveStreamKey(trimmed);
-      const nextChannelUrl = `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`;
-      setStationPrimaryVideoId(CHALKTECH_CHANNEL_ID);
-      setCustomVideoId(CHALKTECH_CHANNEL_ID);
-      setCustomChannelInput(nextChannelUrl);
-      setStreamMode('channel');
-      setPlayerRefreshKey((prev) => prev + 1);
-
-      await saveStationStreamConfigToFirestore({
-        videoId: CHALKTECH_CHANNEL_ID,
-        channelId: CHALKTECH_CHANNEL_ID,
-        channelUrl: nextChannelUrl,
-        mode: 'channel',
-        callsign: currentCallsign,
-      });
-
-      setSyncSuccessToast(`✓ Stream Key (${trimmed}) received & linked! Live feed playing now via your official @chalktech channel.`);
+      setSyncSuccessToast('✓ Private Stream Key saved locally in this browser (never shared publicly).');
       setTimeout(() => setSyncSuccessToast(null), 6000);
       return;
     }
@@ -1035,45 +1026,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               <span>Reload</span>
             </button>
 
-            {onOpenAdminMetrics && (
-              <button
-                type="button"
-                onClick={() => {
-                  tacticalAudio.playRadarPing(840);
-                  onOpenAdminMetrics();
-                }}
-                className="bg-neutral-800 hover:bg-neutral-750 text-neutral-300 border border-neutral-700 hover:border-amber-500/50 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
-                title="Station Broadcaster Controls (Password Protected)"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Station Controls</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                tacticalAudio.playRadarPing(800);
-                setShowTroubleshootModal(true);
-              }}
-              className="bg-neutral-800 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="Switch cameras or troubleshoot feed"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Stream Help</span>
-            </button>
-
-            <button
-              onClick={() => {
-                tacticalAudio.playRadarPing(760);
-                setShowFeedInput(!showFeedInput);
-              }}
-              className="bg-neutral-800 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="Configure station stream or explore guest raptor cameras"
-            >
-              <Settings className="w-3.5 h-3.5 text-neutral-400" />
-              <span>{showFeedInput ? 'Close Settings' : 'More Cams'}</span>
-            </button>
-
             <button
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
@@ -1091,68 +1043,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
           <div className="bg-emerald-950/90 border-b border-emerald-500/50 px-4 py-2 text-xs font-mono-tactical text-emerald-300 flex items-center justify-between">
             <span>{syncSuccessToast}</span>
             <button onClick={() => setSyncSuccessToast(null)} className="text-emerald-400 hover:text-white font-bold cursor-pointer">✕</button>
-          </div>
-        )}
-
-        {/* Automatic YouTube "Allow Embedding" Diagnostic & Seamless Fallback Banner */}
-        {isPrimaryEmbedBlocked && (
-          <div className="bg-amber-950/90 border-b border-amber-500/60 px-3.5 sm:px-5 py-3 text-xs space-y-2.5 animate-fadeIn">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <div className="font-bold text-amber-200 text-sm flex items-center gap-2 flex-wrap">
-                    <span>YouTube Embedding Blocked by YouTube Studio for <code className="text-amber-300 font-mono">{activeVideoId}</code></span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] uppercase font-bold">1-Click Fix Needed in Studio</span>
-                  </div>
-                  <p className="text-[12px] text-neutral-200 leading-relaxed font-sans">
-                    YouTube returned <strong>HTTP 401: &ldquo;Playback on other websites has been disabled by the video owner&rdquo;</strong> for this broadcast.
-                    <span className="text-amber-300 block font-semibold mt-1">How to fix in 15 seconds:</span>
-                    1. Click the button on the right &rarr; <strong>&ldquo;1. Enable Embedding in YouTube Studio ↗&rdquo;</strong>.<br />
-                    2. Under Details, click <strong>SHOW MORE</strong> &rarr; scroll to <strong>License</strong> &rarr; tick <strong>&ldquo;Allow embedding&rdquo;</strong>.<br />
-                    3. Check that Visibility is <strong>Public</strong> or <strong>Unlisted</strong> (if set to &ldquo;Private&rdquo;, YouTube disables embedding). Click <strong>Save</strong>!
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    tacticalAudio.playRadarPing(880);
-                    const ok = await checkYouTubeVideoEmbeddable(activeVideoId);
-                    setIsPrimaryEmbedBlocked(!ok);
-                    if (ok) {
-                      setForceDirectLiveEmbed(true);
-                      setPlayerRefreshKey((prev) => prev + 1);
-                      setSyncSuccessToast(`✓ Embedding verified! Station Live Camera is now playing live.`);
-                    } else {
-                      setSyncSuccessToast(`Still blocked by YouTube (HTTP 401). Enable "Allow embedding" in YouTube Studio.`);
-                    }
-                    setTimeout(() => setSyncSuccessToast(null), 6000);
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs cursor-pointer transition-colors whitespace-nowrap shadow"
-                >
-                  ↻ Re-Check Stream Now
-                </button>
-              </div>
-            </div>
-
-            {/* Seamless fallback notice while user enables embedding */}
-            {!forceDirectLiveEmbed && (
-              <div className="bg-neutral-900/80 rounded-lg p-2 flex items-center justify-between text-[11px] text-neutral-300 border border-neutral-800 flex-wrap gap-2">
-                <span>
-                  🛡️ Playing verified Barbury Castle preview (<code className="text-emerald-400 font-mono">{CHALKTECH_VERIFIED_EMBED_ID}</code>) in the player below until YouTube Studio saves your embedding permission.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setForceDirectLiveEmbed(true)}
-                  className="text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer whitespace-nowrap"
-                >
-                  Force Load {activeVideoId} Anyway
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -1193,117 +1083,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             })}
           </div>
         </div>
-
-        {/* All Cameras & Station Configuration Drawer */}
-        {showFeedInput && (
-          <div className="p-3.5 bg-neutral-900 border-b border-neutral-800 space-y-3 font-mono-tactical text-xs animate-fadeIn">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="font-semibold text-neutral-200 flex items-center gap-1.5">
-                <Video className="w-4 h-4 text-amber-400" />
-                Station Camera &amp; Verified Live Raptor Streams:
-              </span>
-              <span className="text-neutral-400 font-mono text-[11px]">
-                Active Feed: <strong className="text-amber-400">{activeVideoId}</strong>
-              </span>
-            </div>
-
-            {/* Quick Presets Carousel */}
-            <div className="space-y-1.5">
-              <span className="text-neutral-400 text-[11px] block">Select Primary Station Cam or Guest Live Raptor Cams:</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {POPULAR_CAMERA_PRESETS.map((preset) => {
-                  const isPrimary = preset.id === 'raptorlens-station';
-                  const targetVideoId = isPrimary ? stationPrimaryVideoId : preset.videoId;
-                  const isCurrent = isPrimary ? isViewingPrimaryStation : activeVideoId === preset.videoId;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        tacticalAudio.playRadarPing(880);
-                        setCustomVideoId(targetVideoId);
-                        setCustomChannelInput(preset.channelUrl);
-                        setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(targetVideoId) ? 'channel' : 'video');
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        isCurrent
-                          ? isPrimary
-                            ? 'bg-emerald-500/20 border-emerald-400 text-emerald-100 font-bold ring-1 ring-emerald-500/50'
-                            : 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold ring-1 ring-amber-500/50'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-[10px] mb-0.5">
-                        <span className={isPrimary ? 'text-emerald-400 font-bold uppercase' : 'text-amber-400 font-bold uppercase'}>
-                          {preset.badge}
-                        </span>
-                        <span className="text-emerald-400 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          LIVE
-                        </span>
-                      </div>
-                      <div className="font-bold text-xs truncate">{preset.name}</div>
-                      <div className="text-[10px] text-neutral-400 truncate">{preset.location}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Broadcaster Protected Admin Panel Callout */}
-            <div className="pt-2 border-t border-neutral-800">
-              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0 mt-0.5">
-                    <Lock className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="text-xs font-bold text-neutral-200 flex items-center gap-2">
-                      <span>Station Broadcaster Controls (Locked)</span>
-                      <span className="text-[10px] text-amber-400 bg-amber-500/15 px-1.5 py-0.2 rounded border border-amber-500/30">
-                        OPERATOR ONLY
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-neutral-400 font-sans leading-relaxed">
-                      Only authenticated station operators can update the official live broadcast URL, RTMP keys, or sync changes across all visitors.
-                    </p>
-                  </div>
-                </div>
-
-                {onOpenAdminMetrics && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      tacticalAudio.playRadarPing(840);
-                      onOpenAdminMetrics();
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shadow self-start sm:self-auto"
-                  >
-                    <Key className="w-3 h-3" />
-                    <span>Open Admin Console</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1 border-t border-neutral-800/80 flex-wrap gap-2">
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                <span>Camera choice automatically persists across visits.</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  tacticalAudio.playRadarPing(700);
-                  setShowFeedInput(false);
-                }}
-                className="text-amber-400 hover:text-amber-300 underline cursor-pointer font-bold"
-              >
-                Done / Save
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Video Player & Optical Stage Canvas */}
         <div className="relative aspect-video bg-black overflow-hidden group">
