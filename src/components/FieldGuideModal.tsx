@@ -349,21 +349,21 @@ export const FieldGuideModal: React.FC<FieldGuideModalProps> = ({
               </p>
             </div>
 
-            {/* Community Support & Zero-Ad Pledge */}
-            <div className="bg-gradient-to-r from-amber-950/40 via-neutral-900 to-amber-950/40 border border-amber-500/40 rounded-2xl p-4 space-y-3">
+            {/* UK Wildlife Charity Support & Zero Personal Money Pledge */}
+            <div className="bg-gradient-to-r from-emerald-950/40 via-neutral-900 to-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Coffee className="w-5 h-5 text-amber-400" />
-                  <h4 className="text-amber-300 font-display-tactical text-xs font-bold uppercase tracking-wider">
-                    Fuel the Radar: 100% Free & Ad-Free Community Fund
+                  <HeartHandshake className="w-5 h-5 text-emerald-400" />
+                  <h4 className="text-emerald-300 font-display-tactical text-xs font-bold uppercase tracking-wider">
+                    100% Volunteer Project — Support UK Wildlife Charities Instead
                   </h4>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                  Zero Trackers • Open Data
+                  Zero Personal Donations
                 </span>
               </div>
               <p className="text-xs text-neutral-300 leading-relaxed font-sans">
-                RaptorLens is built and maintained as an independent open-access tool for the UK raptor observation community. If you enjoy using the live radar, thermal lift indices, and offline PWA on your hill-walks, consider fueling the scout with a coffee or small tip to support domain, map tile CDN, and server costs!
+                RaptorLens UK does not accept personal donations, tips, or payments. If you enjoy watching the live Ridgeway camera and using the raptor map, please consider donating directly to the <strong>RSPB</strong>, <strong>Wiltshire Wildlife Trust</strong>, <strong>The Hawk Conservancy Trust</strong>, or the <strong>BTO</strong>.
               </p>
               <div className="pt-1 flex items-center flex-wrap gap-2.5">
                 {onOpenDonate && (
@@ -373,10 +373,10 @@ export const FieldGuideModal: React.FC<FieldGuideModalProps> = ({
                       onClose();
                       onOpenDonate();
                     }}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md shadow-amber-500/20 cursor-pointer transition-all active:scale-[0.98]"
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer transition-all active:scale-[0.98]"
                   >
-                    <Coffee className="w-4 h-4" />
-                    <span>Fuel the Downland Radar / Tip the Scout</span>
+                    <HeartHandshake className="w-4 h-4" />
+                    <span>Support UK Wildlife Charities (RSPB / Wildlife Trusts)</span>
                   </button>
                 )}
               </div>
@@ -941,11 +941,11 @@ export const FieldGuideModal: React.FC<FieldGuideModalProps> = ({
                   onClose();
                   onOpenDonate();
                 }}
-                className="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/35 text-amber-300 font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-                title="Support RaptorLens Hosting & Data"
+                className="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Support RSPB, Wiltshire Wildlife Trust & UK Raptor Charities"
               >
-                <Coffee className="w-4 h-4 text-amber-400" />
-                <span>Fuel Radar</span>
+                <HeartHandshake className="w-4 h-4 text-emerald-400" />
+                <span>Wildlife Charities</span>
               </button>
             )}
 

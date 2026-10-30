@@ -1,18 +1,20 @@
+/**
+ * UK Wildlife & Bird Conservation Charity Directory Modal:
+ * Replaces personal tipping/donations with direct links to registered UK wildlife,
+ * bird of prey, and chalk downland conservation charities (RSPB, Wiltshire Wildlife Trust,
+ * Hawk Conservancy Trust, BTO, and The Wildlife Trusts). Zero funds go to the site operator.
+ */
+
 import React, { useState } from 'react';
-import { 
-  X, 
-  Coffee, 
-  Heart, 
-  Sparkles, 
-  ExternalLink, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Award, 
-  Zap, 
-  Compass, 
-  MessageSquare,
-  Gift,
-  HeartHandshake
+import {
+  X,
+  Heart,
+  ExternalLink,
+  ShieldCheck,
+  CheckCircle2,
+  Award,
+  HeartHandshake,
+  Send
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
 
@@ -23,78 +25,130 @@ interface DonateModalProps {
   onOpenSponsors?: () => void;
 }
 
-interface SupporterNote {
+interface UkWildlifeCharity {
   id: string;
   name: string;
-  amount: string;
+  shortName: string;
+  charityNumber: string;
+  focus: string;
+  description: string;
+  donateUrl: string;
+  accentClass: string;
+  buttonClass: string;
+}
+
+interface CharitySupportNote {
+  id: string;
+  callsign: string;
+  charityName: string;
   note: string;
   timeAgo: string;
 }
 
-const DEFAULT_SUPPORTERS: SupporterNote[] = [
+const UK_WILDLIFE_CHARITIES: UkWildlifeCharity[] = [
   {
-    id: 's1',
-    name: 'Wessex_KiteWatch',
-    amount: '£5.00',
-    note: 'Used RaptorLens at Hackpen Hill yesterday and got onto 6 Kites and a Hobby! Incredible tool.',
-    timeAgo: '2 hours ago',
+    id: 'rspb',
+    name: 'RSPB (Royal Society for the Protection of Birds)',
+    shortName: 'RSPB',
+    charityNumber: 'Registered Charity No. 207076 (England & Wales)',
+    focus: 'UK Birds of Prey, Hen Harrier Life Project & Habitat Reserves',
+    description:
+      'The UK’s largest nature conservation charity, protecting rare Schedule 1 raptors, defending upland and downland habitats, and tackling wildlife crime across Britain.',
+    donateUrl: 'https://www.rspb.org.uk/donate',
+    accentClass: 'border-emerald-500/40 bg-emerald-950/25',
+    buttonClass: 'bg-emerald-500 hover:bg-emerald-400 text-neutral-950',
   },
   {
-    id: 's2',
-    name: 'Chiltern_Spotter',
-    amount: '£3.00',
-    note: 'Love the thermal lift index and silence from ads. Happy to fund the coffee!',
-    timeAgo: 'Yesterday',
+    id: 'wiltshire-wildlife',
+    name: 'Wiltshire Wildlife Trust',
+    shortName: 'Wiltshire Wildlife Trust',
+    charityNumber: 'Registered Charity No. 266202',
+    focus: 'Marlborough Downs, Chalk Grassland & Local Wiltshire Nature Reserves',
+    description:
+      'Directly manages and restores ancient chalk downland, wildflower meadows, and wildlife corridors right here across Wiltshire, Swindon, and the Marlborough Downs.',
+    donateUrl: 'https://www.wiltshirewildlife.org/donate',
+    accentClass: 'border-amber-500/40 bg-amber-950/20',
+    buttonClass: 'bg-amber-500 hover:bg-amber-400 text-neutral-950',
   },
   {
-    id: 's3',
-    name: 'Plain_Harrier_Patrol',
-    amount: '£10.00',
-    note: 'Thanks for supporting Schedule 1 conservation ethics and clean offline PWA.',
-    timeAgo: '3 days ago',
+    id: 'hawk-conservancy',
+    name: 'The Hawk Conservancy Trust',
+    shortName: 'Hawk Conservancy Trust',
+    charityNumber: 'Registered Charity No. 1092185',
+    focus: 'Southern England Raptor Research, Kestrel & Barn Owl Nest Boxes',
+    description:
+      'Specialist bird of prey conservation charity operating the National Bird of Prey Hospital and leading field research on Kestrels, Barn Owls, and Red Kites across Wessex.',
+    donateUrl: 'https://www.hawk-conservancy.org/support-us/donate/',
+    accentClass: 'border-cyan-500/40 bg-cyan-950/20',
+    buttonClass: 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950',
+  },
+  {
+    id: 'bto',
+    name: 'British Trust for Ornithology (BTO)',
+    shortName: 'BTO',
+    charityNumber: 'Registered Charity No. 216652',
+    focus: 'Raptor Ringing, Nest Record Scheme & Scientific Bird Monitoring',
+    description:
+      'Independent scientific research trust powering UK bird population monitoring, satellite tagging, and the national Nest Record Scheme.',
+    donateUrl: 'https://www.bto.org/how-you-can-help/donate',
+    accentClass: 'border-neutral-700 bg-neutral-900/80',
+    buttonClass: 'bg-neutral-200 hover:bg-white text-neutral-950',
+  },
+  {
+    id: 'wildlife-trusts',
+    name: 'The Wildlife Trusts (UK)',
+    shortName: 'The Wildlife Trusts',
+    charityNumber: 'Registered Charity No. 207238',
+    focus: '30 by 30 Nature Recovery & UK-Wide Habitat Restoration',
+    description:
+      'A grassroots movement of 46 regional Wildlife Trusts working to bring wildlife back and restore 30% of UK land and sea for nature by 2030.',
+    donateUrl: 'https://www.wildlifetrusts.org/donate',
+    accentClass: 'border-neutral-700 bg-neutral-900/80',
+    buttonClass: 'bg-neutral-200 hover:bg-white text-neutral-950',
   },
 ];
 
+const INITIAL_COMMUNITY_NOTES: CharitySupportNote[] = [
+  {
+    id: 'cn-1',
+    callsign: 'Wessex_KiteWatch',
+    charityName: 'Wiltshire Wildlife Trust',
+    note: 'Watched 4 Red Kites over Barbury Castle on the cam today — sent a donation to Wiltshire Wildlife Trust to help protect our local chalk downland!',
+    timeAgo: 'Recent field note',
+  },
+  {
+    id: 'cn-2',
+    callsign: 'Ridgeway_Walker',
+    charityName: 'RSPB',
+    note: 'Checked the summit weather here before our walk from Hackpen Hill. Donated to the RSPB in appreciation.',
+    timeAgo: 'Recent field note',
+  },
+];
+
+/**
+ * Renders the UK Wildlife & Nature Charity support modal.
+ * Inputs: DonateModalProps (isOpen, onClose, currentCallsign, onOpenSponsors)
+ * Outputs: Modal JSX directing visitors exclusively to accredited UK wildlife charities.
+ */
 export const DonateModal: React.FC<DonateModalProps> = ({
   isOpen,
   onClose,
-  currentCallsign = 'RaptorScout_HQ',
+  currentCallsign = 'RIDGE-WALKER',
   onOpenSponsors,
 }) => {
-  const [selectedTier, setSelectedTier] = useState<number>(5);
-  const [customAmount, setCustomAmount] = useState<string>('');
-  const [supporterName, setSupporterName] = useState<string>(currentCallsign);
-  const [supporterMessage, setSupporterMessage] = useState<string>('');
-  const [isSuccess, setIsSuccess] = useState<boolean>(false);
-  const [supporters, setSupporters] = useState<SupporterNote[]>(DEFAULT_SUPPORTERS);
-  const [kofiUrl, setKofiUrl] = useState<string>(() => {
+  const [selectedCharity, setSelectedCharity] = useState<string>('RSPB');
+  const [observerName, setObserverName] = useState<string>(currentCallsign);
+  const [fieldNote, setFieldNote] = useState<string>('');
+  const [noteSubmitted, setNoteSubmitted] = useState<boolean>(false);
+  const [notes, setNotes] = useState<CharitySupportNote[]>(() => {
     try {
-      const saved = localStorage.getItem('raptorlens_kofi_url');
-      if (saved && saved !== 'https://ko-fi.com' && saved !== 'https://ko-fi.com/') {
-        return saved;
-      }
-      return 'https://ko-fi.com/raptorlens';
+      const saved = localStorage.getItem('raptorlens_charity_notes');
+      return saved ? JSON.parse(saved) : INITIAL_COMMUNITY_NOTES;
     } catch {
-      return 'https://ko-fi.com/raptorlens';
+      return INITIAL_COMMUNITY_NOTES;
     }
   });
-  const [isEditingKofi, setIsEditingKofi] = useState<boolean>(false);
-  const [kofiInput, setKofiInput] = useState<string>(kofiUrl);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-  const handleSaveKofi = () => {
-    let clean = kofiInput.trim();
-    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = clean.startsWith('ko-fi.com') ? `https://${clean}` : `https://ko-fi.com/${clean}`;
-    }
-    setKofiUrl(clean);
-    setIsEditingKofi(false);
-    try {
-      localStorage.setItem('raptorlens_kofi_url', clean);
-    } catch {
-      // ignore
-    }
-  };
 
   React.useEffect(() => {
     if (isOpen) {
@@ -107,71 +161,57 @@ export const DonateModal: React.FC<DonateModalProps> = ({
         document.body.style.overflow = prevOverflow;
       };
     }
-  }, [isOpen, isSuccess]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSelectTier = (amount: number) => {
-    tacticalAudio.playRadarPing(880);
-    setSelectedTier(amount);
-    setCustomAmount('');
-  };
-
-  const handleCustomChange = (val: string) => {
-    setCustomAmount(val);
-    setSelectedTier(0);
-  };
-
-  const getEffectiveAmount = () => {
-    if (selectedTier > 0) return `£${selectedTier}`;
-    if (customAmount && !isNaN(Number(customAmount))) return `£${Number(customAmount).toFixed(2)}`;
-    return '£5';
-  };
-
-  const handleProceedToKofi = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  /**
+   * Saves a community conservation appreciation note locally without collecting any payment.
+   */
+  const handlePostCharityNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fieldNote.trim()) return;
     tacticalAudio.playConfirmChime();
 
-    if (supporterName.trim()) {
-      const newSupporter: SupporterNote = {
-        id: `supporter-${Date.now()}`,
-        name: supporterName.trim(),
-        amount: getEffectiveAmount(),
-        note: supporterMessage.trim() || 'Supporter on Ko-fi',
-        timeAgo: 'Just now',
-      };
-      setSupporters([newSupporter, ...supporters]);
-    }
+    const newEntry: CharitySupportNote = {
+      id: `cn-${Date.now()}`,
+      callsign: observerName.trim() || currentCallsign || 'Field Spotter',
+      charityName: selectedCharity,
+      note: fieldNote.trim(),
+      timeAgo: 'Just now',
+    };
 
-    window.open(kofiUrl, '_blank', 'noopener,noreferrer');
+    const updated = [newEntry, ...notes];
+    setNotes(updated);
+    try {
+      localStorage.setItem('raptorlens_charity_notes', JSON.stringify(updated));
+    } catch {}
+    setFieldNote('');
+    setNoteSubmitted(true);
+    setTimeout(() => setNoteSubmitted(false), 4000);
   };
 
   return (
-    <div 
+    <div
       ref={scrollContainerRef}
       className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-md p-4 flex justify-center items-start overscroll-contain"
     >
-      <div 
+      <div
         id="donate-modal-container"
-        className="relative w-full max-w-xl my-4 sm:my-8 mb-16 sm:mb-24 bg-neutral-900 border border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden font-mono-tactical text-neutral-200 animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-2xl my-4 sm:my-8 mb-16 sm:mb-24 bg-neutral-900 border border-emerald-500/40 rounded-2xl shadow-2xl overflow-hidden font-mono-tactical text-neutral-200 animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Header Ribbon */}
-        <div className="bg-gradient-to-r from-amber-950/80 via-neutral-900 to-amber-950/80 border-b border-amber-500/30 px-6 py-5 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-950/80 via-neutral-900 to-emerald-950/80 border-b border-emerald-500/30 px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow-inner">
-              <Coffee className="w-5 h-5 animate-bounce" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-inner">
+              <Heart className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-amber-300 font-sans tracking-tight">
-                  Fuel the Downland Radar
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
-                  Community Fund
-                </span>
-              </div>
-              <p className="text-xs text-neutral-400 font-sans">
-                Help keep RaptorLens 100% free, ad-free, and independent for UK birders
+              <h2 className="text-base sm:text-lg font-bold text-emerald-300 font-sans tracking-tight">
+                Support UK Wildlife &amp; Raptor Charities
+              </h2>
+              <p className="text-xs text-neutral-300 font-sans">
+                100% Volunteer Station &middot; Zero Money Goes to This Website
               </p>
             </div>
           </div>
@@ -182,7 +222,7 @@ export const DonateModal: React.FC<DonateModalProps> = ({
               tacticalAudio.playRadarPing(600);
               onClose();
             }}
-            className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100 transition-colors cursor-pointer"
+            className="p-2 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -191,286 +231,161 @@ export const DonateModal: React.FC<DonateModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto">
-          {/* Transparency Card */}
-          <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-4 space-y-2">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Zero Ads • Zero Paywalls • Volunteer Powered</span>
+          {/* Explicit Zero Personal Money Pledge */}
+          <div className="bg-emerald-950/35 border border-emerald-500/40 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>A Personal Note from the Station Operator</span>
             </div>
-            <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-              RaptorLens was built out of passion for UK birds of prey across The Ridgeway, Salisbury Plain, the Chilterns, Cotswolds, and South Downs. Your support directly funds:
+            <p className="text-xs text-neutral-200 font-sans leading-relaxed">
+              RaptorLens UK and the live Hackpen Hill &amp; Barbury Castle camera are run purely for the love of British wildlife and the Marlborough Downs. <strong>We do not accept personal donations, tips, or payments of any kind.</strong>
             </p>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-neutral-300 pt-1 font-sans">
-              <li className="flex items-center gap-1.5 bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>UK high-res radar map tiles & CDN</span>
-              </li>
-              <li className="flex items-center gap-1.5 bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>raptorlens.org domain, SSL & PWA hosting</span>
-              </li>
-              <li className="flex items-center gap-1.5 bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Live thermal weather telemetry API</span>
-              </li>
-              <li className="flex items-center gap-1.5 bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Local UK raptor conservation support</span>
-              </li>
-            </ul>
+            <p className="text-xs text-emerald-200 font-sans leading-relaxed">
+              If you enjoy checking the live ridge weather, watching the camera, or tracking Red Kites and Kestrels on the map, please consider making a direct donation to one of these registered UK wildlife and bird conservation charities instead:
+            </p>
           </div>
 
-          {!isSuccess ? (
-            <form onSubmit={handleProceedToKofi} className="space-y-5">
-              {/* Preset Coffee Tiers */}
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center justify-between">
-                  <span>Select a Scout Tip Level:</span>
-                  <span className="text-amber-400 font-normal lowercase">every coffee keeps servers live</span>
-                </label>
+          {/* Official UK Wildlife Charity Cards */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+              Registered UK Bird &amp; Nature Charities (Direct Official Links)
+            </h3>
 
-                <div className="grid grid-cols-3 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTier(3)}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                      selectedTier === 3
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-md shadow-amber-500/10'
-                        : 'bg-neutral-950/60 border-neutral-800 hover:border-neutral-700 text-neutral-300'
-                    }`}
-                  >
-                    <span className="text-lg">☕</span>
-                    <span className="text-sm font-bold text-amber-300">£3</span>
-                    <span className="text-[10px] text-neutral-400 font-sans">Flat White</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTier(5)}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 relative ${
-                      selectedTier === 5
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-md shadow-amber-500/10'
-                        : 'bg-neutral-950/60 border-neutral-800 hover:border-neutral-700 text-neutral-300'
-                    }`}
-                  >
-                    <div className="absolute -top-2 px-1.5 py-0.2 rounded-full bg-amber-500 text-[9px] font-bold text-black uppercase tracking-wider">
-                      Popular
-                    </div>
-                    <span className="text-lg">🦅</span>
-                    <span className="text-sm font-bold text-amber-300">£5</span>
-                    <span className="text-[10px] text-neutral-400 font-sans">Ridge Patrol</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTier(10)}
-                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                      selectedTier === 10
-                        ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-md shadow-amber-500/10'
-                        : 'bg-neutral-950/60 border-neutral-800 hover:border-neutral-700 text-neutral-300'
-                    }`}
-                  >
-                    <span className="text-lg">🔭</span>
-                    <span className="text-sm font-bold text-amber-300">£10</span>
-                    <span className="text-[10px] text-neutral-400 font-sans">Thermal Patron</span>
-                  </button>
-                </div>
-
-                {/* Custom Amount Input */}
-                <div className="pt-1">
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-neutral-500 text-xs">£</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      placeholder="Or enter custom amount (e.g. £15)"
-                      value={customAmount}
-                      onChange={(e) => handleCustomChange(e.target.value)}
-                      className="w-full pl-7 pr-4 py-2 bg-neutral-950/60 border border-neutral-800 rounded-xl text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Supporter Details */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1">
-                    Your Callsign or Name:
-                  </label>
-                  <input
-                    type="text"
-                    value={supporterName}
-                    onChange={(e) => setSupporterName(e.target.value)}
-                    placeholder="e.g. Ridgeway_Scout_99"
-                    className="w-full px-3 py-2 bg-neutral-950/60 border border-neutral-800 rounded-xl text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1">
-                    Message / Field Note (optional):
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={supporterMessage}
-                    onChange={(e) => setSupporterMessage(e.target.value)}
-                    placeholder="e.g. Thanks for the Barbury Castle hotspot data! Spotted 3 Kites today."
-                    className="w-full px-3 py-2 bg-neutral-950/60 border border-neutral-800 rounded-xl text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-amber-500 font-sans resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 space-y-3">
-                {/* External Ko-fi / Coffee Link */}
-                <a
-                  href={kofiUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => {
-                    tacticalAudio.playConfirmChime();
-                    if (supporterName.trim()) {
-                      const newSupporter: SupporterNote = {
-                        id: `supporter-${Date.now()}`,
-                        name: supporterName.trim(),
-                        amount: getEffectiveAmount(),
-                        note: supporterMessage.trim() || 'Supporter on Ko-fi',
-                        timeAgo: 'Just now',
-                      };
-                      setSupporters([newSupporter, ...supporters]);
-                    }
-                  }}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 cursor-pointer transition-all active:scale-[0.99]"
-                >
-                  <Coffee className="w-4 h-4 fill-black text-black" />
-                  <span>Support on Ko-fi ({getEffectiveAmount()})</span>
-                  <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                </a>
-
-                {/* Ko-fi Page Address & Quick Editor */}
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-neutral-800/80">
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
-                    <span className="flex items-center gap-1.5 truncate">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>Ko-fi Destination:</span>
-                      <span className="font-mono text-neutral-200 truncate">{kofiUrl}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditingKofi(!isEditingKofi);
-                        setKofiInput(kofiUrl);
-                      }}
-                      className="text-amber-400 hover:text-amber-300 underline cursor-pointer shrink-0 ml-2 text-[10px] uppercase font-bold"
-                    >
-                      {isEditingKofi ? 'Cancel' : 'Change Handle'}
-                    </button>
-                  </div>
-
-                  {isEditingKofi && (
-                    <div className="flex gap-2 pt-1">
-                      <input
-                        type="text"
-                        value={kofiInput}
-                        onChange={(e) => setKofiInput(e.target.value)}
-                        placeholder="e.g. raptorlens or https://ko-fi.com/yourhandle"
-                        className="flex-1 px-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-amber-500 font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSaveKofi}
-                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-lg cursor-pointer transition-colors"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  )}
-                  <p className="text-[10px] text-neutral-400 font-sans leading-relaxed">
-                    100% of Ko-fi contributions directly maintain Downland telemetry, hardware, and server hosting. Opens in a secure new tab.
-                  </p>
-                </div>
-              </div>
-            </form>
-          ) : (
-            /* Success Confirmation Screen */
-            <div className="text-center py-6 px-4 space-y-4 bg-amber-500/10 border border-amber-500/30 rounded-xl animate-in fade-in">
-              <div className="w-12 h-12 mx-auto rounded-full bg-amber-500/20 border border-amber-500 flex items-center justify-center text-amber-300 shadow-md">
-                <Heart className="w-6 h-6 fill-amber-400 text-amber-400 animate-pulse" />
-              </div>
-
-              <div>
-                <h3 className="text-base font-bold text-amber-300 font-sans">
-                  Thank You for Backing RaptorLens!
-                </h3>
-                <p className="text-xs text-neutral-300 font-sans mt-1 max-w-md mx-auto">
-                  Your <strong className="text-amber-300">{getEffectiveAmount()}</strong> pledge has been logged. Independent contributions like yours keep the Downland ridge telemetry completely free for everyone.
-                </p>
-              </div>
-
-              <div className="pt-2 flex justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsSuccess(false)}
-                  className="px-4 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs cursor-pointer transition-colors"
-                >
-                  Make Another Pledge
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onClose()}
-                  className="px-5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs cursor-pointer transition-colors"
-                >
-                  Return to Field Scout
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Recent Supporters Wall */}
-          <div className="space-y-2.5 pt-2 border-t border-neutral-800">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-amber-400" />
-                <span>Recent Radar Backers</span>
-              </span>
-              <span className="text-[11px] text-amber-400/90 font-mono">
-                {supporters.length} Supporters
-              </span>
-            </div>
-
-            <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-              {supporters.map((sup) => (
+            <div className="space-y-3">
+              {UK_WILDLIFE_CHARITIES.map((charity) => (
                 <div
-                  key={sup.id}
-                  className="bg-neutral-950/60 border border-neutral-800/80 rounded-xl p-2.5 flex items-start justify-between gap-3 text-xs"
+                  key={charity.id}
+                  className={`p-4 rounded-xl border ${charity.accentClass} flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all`}
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-neutral-200">{sup.name}</span>
-                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono border border-amber-500/30">
-                        {sup.amount}
-                      </span>
-                      <span className="text-[10px] text-neutral-500">{sup.timeAgo}</span>
+                  <div className="space-y-1.5 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-neutral-100 font-sans">
+                        {charity.name}
+                      </h4>
                     </div>
-                    {sup.note && (
-                      <p className="text-[11px] text-neutral-400 font-sans italic">
-                        "{sup.note}"
-                      </p>
-                    )}
+                    <div className="text-[11px] text-emerald-300/90 font-sans font-medium">
+                      {charity.focus} &middot; <span className="text-neutral-400 font-mono">{charity.charityNumber}</span>
+                    </div>
+                    <p className="text-xs text-neutral-300 font-sans leading-relaxed">
+                      {charity.description}
+                    </p>
                   </div>
+
+                  <a
+                    href={charity.donateUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => tacticalAudio.playConfirmChime()}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shrink-0 shadow cursor-pointer transition-all ${charity.buttonClass}`}
+                  >
+                    <Heart className="w-3.5 h-3.5" />
+                    <span>Donate to {charity.shortName}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Discreet link to Dedicated Sponsors & Partners Directory */}
+          {/* Optional Community Charity Appreciation Log */}
+          <form onSubmit={handlePostCharityNote} className="bg-neutral-950/80 border border-neutral-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-amber-400" />
+                <span>Leave a Wildlife Appreciation Note (Optional)</span>
+              </span>
+              <span className="text-[11px] text-neutral-400 font-sans">
+                Inspire fellow walkers &amp; birders
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] text-neutral-400 mb-1">
+                  Your Callsign or Name
+                </label>
+                <input
+                  type="text"
+                  value={observerName}
+                  onChange={(e) => setObserverName(e.target.value)}
+                  placeholder="e.g. Ridgeway_Walker"
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-emerald-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-neutral-400 mb-1">
+                  Charity Supported / Highlighted
+                </label>
+                <select
+                  value={selectedCharity}
+                  onChange={(e) => setSelectedCharity(e.target.value)}
+                  className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-emerald-500 font-sans"
+                >
+                  {UK_WILDLIFE_CHARITIES.map((c) => (
+                    <option key={c.id} value={c.shortName}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-neutral-400 mb-1">
+                Field Note or Message
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={fieldNote}
+                  onChange={(e) => setFieldNote(e.target.value)}
+                  placeholder="e.g. Enjoyed the Barbury Castle cam today — donated £5 to the RSPB!"
+                  className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs text-neutral-200 focus:outline-none focus:border-emerald-500 font-sans"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Post Note</span>
+                </button>
+              </div>
+            </div>
+
+            {noteSubmitted && (
+              <div className="text-xs text-emerald-400 flex items-center gap-1.5 font-sans">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Thank you for supporting UK wildlife conservation! Your note has been added below.</span>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-2 border-t border-neutral-800/80 max-h-36 overflow-y-auto pr-1">
+              {notes.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-neutral-900/70 border border-neutral-800/80 rounded-lg p-2.5 text-xs space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-neutral-400">
+                    <span>
+                      <strong className="text-neutral-200">{item.callsign}</strong> &middot; <span className="text-emerald-400">{item.charityName}</span>
+                    </span>
+                    <span>{item.timeAgo}</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 font-sans italic">
+                    &ldquo;{item.note}&rdquo;
+                  </p>
+                </div>
+              ))}
+            </div>
+          </form>
+
+          {/* Discreet link to Conservation Partners Directory */}
           {onOpenSponsors && (
-            <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between gap-3 text-xs">
+            <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-1.5 text-neutral-400 text-[11px]">
-                <HeartHandshake className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />
-                <span>Equipment &amp; Conservation Benefactors</span>
+                <HeartHandshake className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Conservation &amp; Optical Partners Directory</span>
               </div>
               <button
                 type="button"
@@ -479,31 +394,24 @@ export const DonateModal: React.FC<DonateModalProps> = ({
                   tacticalAudio.playRadarPing(880);
                   onOpenSponsors();
                 }}
-                className="text-[11px] font-mono-tactical text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2 cursor-pointer transition-colors"
+                className="text-[11px] font-mono-tactical text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 cursor-pointer transition-colors"
               >
-                View Sponsors Page &rarr;
+                View Conservation Partners &rarr;
               </button>
             </div>
           )}
         </div>
 
         {/* Footer info */}
-        <div className="bg-neutral-950 px-6 py-3 border-t border-neutral-850 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-neutral-500 font-sans">
-          <span>RaptorLens UK is an independent, non-commercial downland observation initiative.</span>
-          {onOpenSponsors ? (
-            <button
-              type="button"
-              onClick={() => {
-                tacticalAudio.playRadarPing(880);
-                onOpenSponsors();
-              }}
-              className="text-amber-500/90 hover:text-amber-400 underline underline-offset-2 cursor-pointer transition-colors"
-            >
-              Dedicated Sponsors Page &rarr;
-            </button>
-          ) : (
-            <span className="text-amber-500/80">Wessex Downland SkyScout</span>
-          )}
+        <div className="bg-neutral-950 px-6 py-3 border-t border-neutral-850 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-neutral-400 font-sans">
+          <span>All links open the official charity donation pages directly in a new tab.</span>
+          <button
+            type="button"
+            onClick={() => onClose()}
+            className="text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
+          >
+            Done / Close
+          </button>
         </div>
       </div>
     </div>

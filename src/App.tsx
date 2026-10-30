@@ -1502,42 +1502,17 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3 text-neutral-400 flex-wrap justify-center">
-              {/* Direct YouTube Channel Link */}
-              <a
-                id="footer-youtube-link"
-                href={(() => {
-                  try {
-                    return getYouTubeChannelUrl(
-                      localStorage.getItem('raptorlens_channel_url') || '',
-                      localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID
-                    );
-                  } catch {
-                    return `https://www.youtube.com/watch?v=${DEFAULT_CAMERA_VIDEO_ID}`;
-                  }
-                })()}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => tacticalAudio.playRadarPing(880)}
-                className="px-2.5 py-1 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/40 text-red-300 hover:text-white font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm"
-                title="Visit Official YouTube Channel (Livestream & Community Recordings)"
-              >
-                <svg className="w-3.5 h-3.5 fill-current text-red-400" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-                <span>YouTube Channel ↗</span>
-              </a>
-              <span>•</span>
               <button
                 id="footer-donate-btn"
                 onClick={() => {
                   tacticalAudio.playRadarPing(900);
                   setIsDonateModalOpen(true);
                 }}
-                className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm"
-                title="Fuel the Radar: Help support hosting & independent UK raptor data (100% Ad-Free)"
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 font-semibold cursor-pointer transition-colors flex items-center gap-1.5 shadow-sm"
+                title="100% Volunteer Site — Support RSPB, Wiltshire Wildlife Trust & UK Bird Charities"
               >
-                <Coffee className="w-3.5 h-3.5 text-amber-400" />
-                <span>Fuel the Radar ☕</span>
+                <HeartHandshake className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Support UK Wildlife Charities 🦅</span>
               </button>
               <span>•</span>
               <button

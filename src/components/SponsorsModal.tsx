@@ -376,17 +376,17 @@ export const SponsorsModal: React.FC<SponsorsModalProps> = ({
             ))}
           </div>
 
-          {/* Individual Supporter vs Sponsor Callout */}
-          <div className="p-4 rounded-xl bg-gradient-to-r from-neutral-900 to-amber-950/20 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {/* UK Wildlife Charities Callout */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-neutral-900 to-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Coffee className="w-4 h-4 text-amber-400" />
+                <HeartHandshake className="w-4 h-4 text-emerald-400" />
                 <h4 className="text-xs sm:text-sm font-bold text-neutral-200">
-                  Looking for Individual Birder Tips or Coffee Fueling?
+                  Want to Support British Birds of Prey &amp; Downland Nature?
                 </h4>
               </div>
-              <p className="text-xs text-neutral-400 font-sans">
-                If you are an individual birder looking to buy a coffee or tip the scout, visit our community fund.
+              <p className="text-xs text-neutral-300 font-sans">
+                RaptorLens takes zero personal donations. Instead, we encourage visitors to donate directly to registered UK wildlife charities (RSPB, Wiltshire Wildlife Trust, Hawk Conservancy Trust &amp; BTO).
               </p>
             </div>
 
@@ -398,10 +398,10 @@ export const SponsorsModal: React.FC<SponsorsModalProps> = ({
                   onClose();
                   onOpenDonate();
                 }}
-                className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
+                className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
               >
-                <Coffee className="w-3.5 h-3.5" />
-                <span>Fuel the Radar (Personal Fund)</span>
+                <HeartHandshake className="w-3.5 h-3.5" />
+                <span>UK Wildlife Charities</span>
               </button>
             )}
           </div>

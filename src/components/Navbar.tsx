@@ -18,15 +18,13 @@ import {
   LogIn,
   Smartphone,
   Bug,
-  Coffee,
+  Heart,
   Scale,
   Mail,
   BarChart3,
-  BookOpen,
-  ExternalLink
+  BookOpen
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
-import { getYouTubeChannelUrl, DEFAULT_CAMERA_VIDEO_ID } from '../utils/youtube';
 
 import { SectorId } from '../types/sector';
 import { UK_SECTORS } from '../data/sectors';
@@ -130,17 +128,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsBreezeActive(active);
   };
 
-  const youtubeChannelUrl = (() => {
-    try {
-      return getYouTubeChannelUrl(
-        localStorage.getItem('raptorlens_channel_url') || '',
-        localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID
-      );
-    } catch {
-      return `https://www.youtube.com/watch?v=${DEFAULT_CAMERA_VIDEO_ID}`;
-    }
-  })();
-
   const navItems: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: string | number; isActive: boolean }> = [
     { 
       id: 'dispatches', 
@@ -201,23 +188,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* YouTube Channel Direct Link */}
-          <a
-            id="nav-youtube-channel-link"
-            href={youtubeChannelUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => tacticalAudio.playRadarPing(880)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/40 text-red-300 hover:text-white cursor-pointer transition-colors text-xs font-medium"
-            title="Visit Official YouTube Channel (Live camera & videos)"
-          >
-            <svg className="w-3.5 h-3.5 fill-current text-red-400" viewBox="0 0 24 24">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span>YouTube Channel</span>
-            <ExternalLink className="w-3 h-3 text-red-300" />
-          </a>
-
           {/* Quick Guide Button */}
           <button
             id="nav-user-guide-btn"
@@ -389,7 +359,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="text-[11px] font-semibold">Guide</span>
           </button>
 
-          {/* Support / Donate Button (Desktop/Tablet) */}
+          {/* Support UK Wildlife Charities Button (Desktop/Tablet) */}
           {onOpenDonate && (
             <button
               id="nav-fuel-radar-btn"
@@ -397,12 +367,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 tacticalAudio.playRadarPing(880);
                 onOpenDonate();
               }}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 md:py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
-              title="Support the 24/7 Live Camera on Ko-fi"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 md:py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+              title="Support RSPB, Wiltshire Wildlife Trust & UK Bird Charities (Zero money goes to this site)"
             >
-              <Coffee className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden md:inline">Support Cam</span>
-              <span className="md:hidden text-xs">Support</span>
+              <Heart className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden md:inline">Support Wildlife Charity</span>
+              <span className="md:hidden text-xs">Wildlife Charity</span>
             </button>
           )}
 
@@ -445,21 +415,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
           </div>
 
-          {/* YouTube Channel Direct Link */}
-          <a
-            id="mobile-nav-youtube-btn"
-            href={youtubeChannelUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => tacticalAudio.playRadarPing(880)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-300 font-semibold shrink-0 cursor-pointer"
-          >
-            <svg className="w-3 h-3 fill-current text-red-400" viewBox="0 0 24 24">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-            </svg>
-            <span>YouTube ↗</span>
-          </a>
-
           {/* Callsign Account */}
           {onOpenLogin && (
             <button
@@ -474,17 +429,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Fuel the Radar */}
+          {/* Support UK Wildlife Charity */}
           {onOpenDonate && (
             <button
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
                 onOpenDonate();
               }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 font-semibold shrink-0 cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold shrink-0 cursor-pointer"
             >
-              <Coffee className="w-3 h-3 text-amber-400" />
-              <span>Support Cam</span>
+              <Heart className="w-3 h-3 text-emerald-400" />
+              <span>Wildlife Charity</span>
             </button>
           )}
 

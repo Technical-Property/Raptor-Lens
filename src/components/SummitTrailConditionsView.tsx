@@ -33,7 +33,7 @@ import {
   Info,
   Target,
   Download,
-  Coffee,
+  Heart,
   Share2,
   Check,
   Binoculars,
@@ -1933,11 +1933,11 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   tacticalAudio.playConfirmChime();
                   onOpenDonate();
                 }}
-                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
-                title="Support the 24/7 Barbury & Hackpen Hill live camera"
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                title="Enjoying the cam? Support the RSPB, Wiltshire Wildlife Trust & UK Raptor Charities (Zero money goes to us)"
               >
-                <Coffee className="w-3.5 h-3.5 text-amber-400" />
-                <span>Support Cam</span>
+                <Heart className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Support Wildlife Charity</span>
               </button>
             )}
 
@@ -2387,10 +2387,10 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                   <button
                     type="button"
                     onClick={onOpenDonate}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Coffee className="w-3.5 h-3.5" />
-                    <span>Support Station Cam</span>
+                    <Heart className="w-3.5 h-3.5" />
+                    <span>Support Wildlife Charity</span>
                   </button>
                 )}
               </div>
