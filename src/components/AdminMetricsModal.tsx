@@ -238,19 +238,34 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
     }
   };
 
+  const handleSetOfflineStandby = async () => {
+    tacticalAudio.playConfirmChime();
+    try {
+      localStorage.setItem('raptorlens_station_primary_id', 'OFFLINE');
+    } catch {}
+    window.dispatchEvent(
+      new CustomEvent('raptorlens-station-stream-synced', {
+        detail: {
+          videoId: 'OFFLINE',
+          mode: 'video',
+        },
+      })
+    );
+    await saveStationStreamConfigToFirestore({
+      videoId: 'OFFLINE',
+      mode: 'video',
+      callsign: currentCallsign || 'STATION-OPERATOR',
+    });
+    setAdminBroadcastUrl('OFFLINE');
+    showToast('✓ Station Camera set to "UPCOMING • LIVE STREAM OFFLINE" for all visitors.');
+  };
+
   const handleSaveAdminStreamKey = async () => {
     const trimmed = adminStreamKey.trim();
     setActiveStreamKey(trimmed);
     tacticalAudio.playConfirmChime();
     if (trimmed) {
-      await saveStationStreamConfigToFirestore({
-        videoId: CHALKTECH_CHANNEL_ID,
-        channelId: CHALKTECH_CHANNEL_ID,
-        channelUrl: `https://www.youtube.com/channel/${CHALKTECH_CHANNEL_ID}/live`,
-        mode: 'channel',
-        callsign: currentCallsign,
-      });
-      showToast('✓ Private RTMP Stream Key saved securely & linked to channel!');
+      showToast('✓ Private RTMP Stream Key saved securely!');
     } else {
       showToast('Stream key cleared.');
     }
@@ -1164,14 +1179,11 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              setAdminBroadcastUrl(CHALKTECH_CHANNEL_ID);
-                              showToast(`Channel live mode set: ${CHALKTECH_CHANNEL_ID}`);
-                            }}
-                            className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-amber-300 text-xs font-semibold cursor-pointer transition-colors border border-neutral-700 whitespace-nowrap"
-                            title="Use automatic channel live endpoint"
+                            onClick={handleSetOfflineStandby}
+                            className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer transition-colors border border-amber-500/40 whitespace-nowrap"
+                            title="Display 'UPCOMING • LIVE STREAM OFFLINE' standby screen to all website visitors"
                           >
-                            📡 Channel Live
+                            📴 Set Upcoming / Offline
                           </button>
                         </div>
                       </div>
@@ -1275,6 +1287,114 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       <code className="text-neutral-300 block truncate text-[11px] bg-neutral-900 p-2 rounded border border-neutral-850">
                         rtmp://a.rtmp.youtube.com/live2/{showRawKey ? (adminStreamKey || '<your-stream-key>') : maskStreamKey(adminStreamKey)}
                       </code>
+                    </div>
+                  </div>
+
+                  {/* CARD 3: LINUX FFMPEG COMMANDS & "PREPARING TO STREAM" FIX */}
+                  <div className="p-4 rounded-xl bg-neutral-900/80 border border-emerald-500/40 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-xs font-mono-tactical text-emerald-300 uppercase tracking-wider font-bold">
+                          3. Linux Service Control (raptorlens-stream.service)
+                        </h4>
+                      </div>
+                      <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                        SYSTEMD RTSP RELAY
+                      </span>
+                    </div>
+
+                    {/* Quick Restart Command */}
+                    <div className="p-3 rounded-lg bg-neutral-950 border border-emerald-500/40 space-y-2 text-xs font-mono-tactical">
+                      <div className="flex items-center justify-between text-neutral-300 flex-wrap gap-2">
+                        <span className="font-bold text-emerald-300">Restart Linux RTSP Streamer (When YouTube says &ldquo;Preparing to stream&rdquo;)</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cmd = `sudo systemctl restart raptorlens-stream.service && sudo systemctl status raptorlens-stream.service`;
+                            navigator.clipboard.writeText(cmd);
+                            tacticalAudio.playConfirmChime();
+                            showToast('✓ Copied raptorlens-stream.service restart command!');
+                          }}
+                          className="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy Restart Command</span>
+                        </button>
+                      </div>
+                      <pre className="text-emerald-300 overflow-x-auto text-[11px] bg-neutral-900 p-2.5 rounded border border-neutral-850 whitespace-pre-wrap break-all leading-relaxed">
+{`sudo systemctl restart raptorlens-stream.service && sudo systemctl status raptorlens-stream.service`}
+                      </pre>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs font-sans text-neutral-200 space-y-1.5 leading-relaxed">
+                      <div className="font-bold text-amber-300">
+                        Why does YouTube say &ldquo;Good&rdquo; and stay stuck on &ldquo;Preparing to stream&rdquo;?
+                      </div>
+                      <ul className="list-disc list-inside space-y-1 text-neutral-300 text-[11px]">
+                        <li>
+                          <strong>Stalled RTSP Camera Thread:</strong> When your camera drops connection briefly overnight, <code className="text-emerald-300">anullsrc</code> keeps sending silent audio to YouTube (so YouTube reports <em>&ldquo;Good&rdquo;</em> connection) while video frames stop arriving. Restarting <code className="text-emerald-300">raptorlens-stream.service</code> reconnects the RTSP video stream immediately.
+                        </li>
+                        <li>
+                          <strong>YouTube Studio &ldquo;Auto-start&rdquo; Toggle:</strong> In YouTube Studio (&ldquo;Go Live&rdquo;), make sure <strong>Enable Auto-start</strong> is switched ON, or click the blue <strong>GO LIVE</strong> button in the top-right corner.
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Option A: Linux USB / V4L2 Camera */}
+                    <div className="p-3 rounded-lg bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono-tactical">
+                      <div className="flex items-center justify-between text-neutral-300 flex-wrap gap-2">
+                        <span className="font-bold text-emerald-300">Option A: Linux USB Camera (/dev/video0) &rarr; YouTube Live</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const key = adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e';
+                            const cmd = `ffmpeg -re -f v4l2 -framerate 30 -video_size 1920x1080 -i /dev/video0 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
+                            navigator.clipboard.writeText(cmd);
+                            tacticalAudio.playConfirmChime();
+                            showToast('✓ Copied Linux USB Camera FFmpeg command!');
+                          }}
+                          className="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy USB Command</span>
+                        </button>
+                      </div>
+                      <pre className="text-neutral-300 overflow-x-auto text-[10px] bg-neutral-900 p-2.5 rounded border border-neutral-850 whitespace-pre-wrap break-all leading-relaxed">
+{`ffmpeg -re -f v4l2 -framerate 30 -video_size 1920x1080 -i /dev/video0 \\
+  -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
+  -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 \\
+  -c:a aac -b:a 128k -ar 44100 \\
+  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e') : maskStreamKey(adminStreamKey)}"`}
+                      </pre>
+                    </div>
+
+                    {/* Option B: RTSP IP Camera */}
+                    <div className="p-3 rounded-lg bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono-tactical">
+                      <div className="flex items-center justify-between text-neutral-300 flex-wrap gap-2">
+                        <span className="font-bold text-cyan-300">Option B: Linux RTSP IP Camera &rarr; YouTube Live</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const key = adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e';
+                            const cmd = `ffmpeg -rtsp_transport tcp -i "rtsp://USER:PASS@CAMERA_IP:554/stream1" -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 -c:a aac -b:a 128k -ar 44100 -map 0:v:0 -map 1:a:0 -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
+                            navigator.clipboard.writeText(cmd);
+                            tacticalAudio.playConfirmChime();
+                            showToast('✓ Copied Linux RTSP Camera FFmpeg command!');
+                          }}
+                          className="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Copy RTSP Command</span>
+                        </button>
+                      </div>
+                      <pre className="text-neutral-300 overflow-x-auto text-[10px] bg-neutral-900 p-2.5 rounded border border-neutral-850 whitespace-pre-wrap break-all leading-relaxed">
+{`ffmpeg -rtsp_transport tcp -i "rtsp://USER:PASS@CAMERA_IP:554/stream1" \\
+  -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
+  -c:v libx264 -preset veryfast -b:v 4500k -maxrate 4500k -bufsize 9000k -pix_fmt yuv420p -g 60 \\
+  -c:a aac -b:a 128k -ar 44100 -map 0:v:0 -map 1:a:0 \\
+  -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '7zga-fvza-tc9z-53fc-3j9e') : maskStreamKey(adminStreamKey)}"`}
+                      </pre>
                     </div>
                   </div>
 

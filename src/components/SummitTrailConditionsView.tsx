@@ -120,6 +120,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
+  const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(true);
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
@@ -323,7 +324,15 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   // Subscribe to real-time station stream config in Firestore + immediate Admin Console sync events
   useEffect(() => {
     const applySyncedConfig = (config: { videoId: string; channelUrl?: string; mode?: 'video' | 'channel' }) => {
+      if (config.videoId === 'OFFLINE' || config.videoId === CHALKTECH_CHANNEL_ID) {
+        setIsOfflineStandby(true);
+        try {
+          localStorage.setItem('raptorlens_station_primary_id', 'OFFLINE');
+        } catch {}
+        return;
+      }
       if (config.videoId && !isRtmpStreamKeyOrUrl(config.videoId)) {
+        setIsOfflineStandby(false);
         setStationPrimaryVideoId(config.videoId);
         try {
           localStorage.setItem('raptorlens_station_primary_id', config.videoId);
@@ -1014,7 +1023,8 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
               type="button"
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
-                setCustomVideoId(stationPrimaryVideoId);
+                setIsOfflineStandby(false);
+                setCustomVideoId(stationPrimaryVideoId === 'OFFLINE' ? DEFAULT_CAMERA_VIDEO_ID : stationPrimaryVideoId);
                 setStreamMode('video');
                 setPlayerRefreshKey((prev) => prev + 1);
               }}
@@ -1434,8 +1444,43 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 Return to Station Cam
               </button>
             </div>
+          ) : (isOfflineStandby || activeVideoId === 'OFFLINE') && isViewingPrimaryStation ? (
+            /* CASE C1: Upcoming / Live Stream Offline Standby Screen */
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-100 space-y-4">
+              <div className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono-tactical text-xs font-bold tracking-widest uppercase flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span>UPCOMING</span>
+              </div>
+              <div className="space-y-1.5 max-w-md">
+                <h3 className="font-display-tactical text-xl sm:text-2xl font-bold text-white tracking-wide uppercase">
+                  Live Stream Offline
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-400 font-sans leading-relaxed">
+                  Station Live Camera • Hackpen Hill • Barbury Fort • Field • Perch
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(880);
+                    setIsOfflineStandby(false);
+                    if (stationPrimaryVideoId === 'OFFLINE') {
+                      setStationPrimaryVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                      setCustomVideoId(DEFAULT_CAMERA_VIDEO_ID);
+                    }
+                    setStreamMode('video');
+                    setPlayerRefreshKey((prev) => prev + 1);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-mono-tactical text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Check Live Feed</span>
+                </button>
+              </div>
+            </div>
           ) : (
-            /* CASE C: Standard Embed Player */
+            /* CASE C2: Standard Embed Player */
             <>
               <iframe
                 ref={youtubeIframeRef}
