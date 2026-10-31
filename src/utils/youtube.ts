@@ -304,6 +304,23 @@ export const formatLocalIpUrl = (val: string): string => {
 
 export type StreamPlayMode = 'video' | 'channel' | 'demo' | 'webcam';
 
+const STALE_OR_LEGACY_VIDEO_IDS = new Set([
+  'OFFLINE',
+  'D9NvW7EA1B0',
+  '9gkrkcqHQ78',
+  'wUmvCR2YBMQ',
+  '36w5VpxTmtk',
+  'UCI8_yRov8jX_M8q4p8uE47w',
+  CHALKTECH_CHANNEL_ID,
+]);
+
+export function isStaleOrLegacyVideoId(val?: string | null): boolean {
+  if (!val) return true;
+  const trimmed = val.trim();
+  if (!trimmed) return true;
+  return STALE_OR_LEGACY_VIDEO_IDS.has(trimmed) || isRtmpStreamKeyOrUrl(trimmed);
+}
+
 /**
  * Generates the embed URL for either a direct live video ID, a channel live stream, or a demo stream.
  * Includes enablejsapi=1 so DVR Rewind Markers can programmatically seek the YouTube player.
@@ -319,23 +336,16 @@ export function buildYouTubeEmbedSrc(options: {
     return `https://www.youtube.com/embed/${DEMO_NATURE_VIDEO_ID}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&loop=1&playlist=${DEMO_NATURE_VIDEO_ID}`;
   }
 
-  const cleanVideoId = (videoId || DEFAULT_CAMERA_VIDEO_ID).trim();
-
-  // If cleanVideoId is an RTMP stream key (e.g. xxxx-xxxx-xxxx-xxxx-xxxx),
-  // seamlessly bridge it to the station's permanent YouTube Channel Live stream!
-  if (isRtmpStreamKeyOrUrl(cleanVideoId)) {
-    const targetChannel = (channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim()))
-      ? channelId.trim()
-      : CHALKTECH_CHANNEL_ID;
-    return `https://www.youtube.com/embed/live_stream?channel=${targetChannel}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
-  }
+  const rawId = (videoId || DEFAULT_CAMERA_VIDEO_ID).trim();
+  const cleanVideoId = isStaleOrLegacyVideoId(rawId) ? DEFAULT_CAMERA_VIDEO_ID : rawId;
 
   // If cleanVideoId is a 24-char YouTube Channel ID (UC...), use the permanent channel live stream endpoint
   if (/^UC[a-zA-Z0-9_-]{22}$/.test(cleanVideoId)) {
     return `https://www.youtube.com/embed/live_stream?channel=${cleanVideoId}&autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
-  if (mode === 'channel') {
+  // Only use channel mode if cleanVideoId is not a valid 11-character YouTube video ID
+  if (mode === 'channel' && !/^[a-zA-Z0-9_-]{11}$/.test(cleanVideoId)) {
     const targetChannel = (channelId && /^UC[a-zA-Z0-9_-]{22}$/.test(channelId.trim()))
       ? channelId.trim()
       : CHALKTECH_CHANNEL_ID;
@@ -344,4 +354,5 @@ export function buildYouTubeEmbedSrc(options: {
 
   return `https://www.youtube.com/embed/${cleanVideoId}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`;
 }
+
 

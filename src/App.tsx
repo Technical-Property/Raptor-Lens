@@ -65,6 +65,7 @@ import { validateFirestoreConnection } from './services/firebase';
 import { sendObserverSignupEmail, ADMIN_NOTIFICATION_EMAIL } from './services/emailNotification';
 
 const CLEAN_SLATE_MIGRATION_KEY = 'raptorlens_clean_slate_v1';
+const STREAM_LIVE_SYNC_MIGRATION_KEY = 'raptorlens_stream_live_sync_v2';
 
 function ensureCleanSlateStorage() {
   try {
@@ -81,6 +82,12 @@ function ensureCleanSlateStorage() {
         localStorage.removeItem('raptorlens_callsign');
       }
       localStorage.setItem(CLEAN_SLATE_MIGRATION_KEY, 'done');
+    }
+    if (localStorage.getItem(STREAM_LIVE_SYNC_MIGRATION_KEY) !== 'done') {
+      localStorage.setItem('raptorlens_station_primary_id', DEFAULT_CAMERA_VIDEO_ID);
+      localStorage.setItem('raptorlens_custom_cam', DEFAULT_CAMERA_VIDEO_ID);
+      localStorage.setItem('raptorlens_stream_mode', 'video');
+      localStorage.setItem(STREAM_LIVE_SYNC_MIGRATION_KEY, 'done');
     }
   } catch {
     // Ignore storage errors

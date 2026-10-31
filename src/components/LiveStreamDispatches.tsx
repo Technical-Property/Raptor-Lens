@@ -60,6 +60,7 @@ import {
   CHALKTECH_VERIFIED_EMBED_ID,
   DEMO_NATURE_VIDEO_ID,
   isRtmpStreamKeyOrUrl,
+  isStaleOrLegacyVideoId,
   setActiveStreamKey
 } from '../utils/youtube';
 
@@ -97,7 +98,11 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [selectedChannelId, setSelectedChannelId] = useState<string>(channels[0]?.id || 'stream-barbury-castle-livecam');
   const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(() => {
     try {
-      return localStorage.getItem('raptorlens_station_primary_id') || localStorage.getItem('raptorlens_custom_cam') || DEFAULT_CAMERA_VIDEO_ID;
+      const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
+      if (savedPrimary && !isStaleOrLegacyVideoId(savedPrimary)) return savedPrimary;
+      const savedCustom = localStorage.getItem('raptorlens_custom_cam') || '';
+      if (savedCustom && !isStaleOrLegacyVideoId(savedCustom)) return savedCustom;
+      return DEFAULT_CAMERA_VIDEO_ID;
     } catch {
       return DEFAULT_CAMERA_VIDEO_ID;
     }
@@ -105,24 +110,16 @@ export const LiveStreamDispatches: React.FC<LiveStreamDispatchesProps> = ({
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
       const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
-      if (savedPrimary) return savedPrimary;
+      if (savedPrimary && !isStaleOrLegacyVideoId(savedPrimary)) return savedPrimary;
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (!saved || saved === '9gkrkcqHQ78' || saved === 'GAxREl6-fJs' || saved === 'wUmvCR2YBMQ' || saved === 'D9NvW7EA1B0') return DEFAULT_CAMERA_VIDEO_ID;
+      if (!saved || isStaleOrLegacyVideoId(saved) || saved === 'GAxREl6-fJs') return DEFAULT_CAMERA_VIDEO_ID;
       return saved;
     } catch {
       return DEFAULT_CAMERA_VIDEO_ID;
     }
   });
   const [customChannelInput, setCustomChannelInput] = useState<string>('');
-  const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
-    try {
-      const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video' || saved === 'channel') return saved;
-      return 'video';
-    } catch {
-      return 'video';
-    }
-  });
+  const [streamMode, setStreamMode] = useState<StreamPlayMode>('video');
   const [showCustomInput, setShowCustomInput] = useState<boolean>(false);
   const [showIpCamHelp, setShowIpCamHelp] = useState<boolean>(false);
   const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);

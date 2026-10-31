@@ -70,6 +70,7 @@ import {
   isLocalIpAddress,
   formatLocalIpUrl,
   isRtmpStreamKeyOrUrl,
+  isStaleOrLegacyVideoId,
   getActiveStreamKey,
   setActiveStreamKey,
   ACTIVE_STATION_STREAM_KEY
@@ -105,12 +106,12 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [stationPrimaryVideoId, setStationPrimaryVideoId] = useState<string>(() => {
     try {
       const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
-      if (savedPrimary && !isRtmpStreamKeyOrUrl(savedPrimary)) {
+      if (savedPrimary && !isStaleOrLegacyVideoId(savedPrimary)) {
         return savedPrimary;
       }
       const savedCustom = localStorage.getItem('raptorlens_custom_cam') || '';
       const isGuest = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === savedCustom);
-      if (savedCustom && !isGuest && !isRtmpStreamKeyOrUrl(savedCustom)) {
+      if (savedCustom && !isGuest && !isStaleOrLegacyVideoId(savedCustom)) {
         return savedCustom;
       }
       return DEFAULT_CAMERA_VIDEO_ID;
@@ -120,23 +121,17 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   });
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
   const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
-  const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('raptorlens_station_primary_id') === 'OFFLINE';
-    } catch {
-      return false;
-    }
-  });
+  const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(false);
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
     try {
       const savedPrimary = localStorage.getItem('raptorlens_station_primary_id') || '';
       const saved = localStorage.getItem('raptorlens_custom_cam') || '';
-      if (savedPrimary && (!saved || !POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === saved))) {
+      if (savedPrimary && !isStaleOrLegacyVideoId(savedPrimary) && (!saved || !POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === saved))) {
         return savedPrimary;
       }
-      if (!saved || saved === '9gkrkcqHQ78' || saved === 'wUmvCR2YBMQ' || saved === '36w5VpxTmtk' || saved === 'D9NvW7EA1B0' || saved === 'UCI8_yRov8jX_M8q4p8uE47w' || isRtmpStreamKeyOrUrl(saved)) {
-        return savedPrimary || DEFAULT_CAMERA_VIDEO_ID;
+      if (!saved || isStaleOrLegacyVideoId(saved)) {
+        return (!isStaleOrLegacyVideoId(savedPrimary) ? savedPrimary : '') || DEFAULT_CAMERA_VIDEO_ID;
       }
       return saved;
     } catch {
@@ -147,7 +142,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const [streamMode, setStreamMode] = useState<StreamPlayMode>(() => {
     try {
       const saved = localStorage.getItem('raptorlens_stream_mode');
-      if (saved === 'video' || saved === 'webcam' || saved === 'channel') return saved;
+      if (saved === 'webcam') return 'webcam';
       return 'video';
     } catch {
       return 'video';

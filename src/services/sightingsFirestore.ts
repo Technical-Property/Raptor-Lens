@@ -12,6 +12,7 @@ import {
 import { db } from './firebase';
 import { SightingLog, CorroborationRecord } from '../types/raptor';
 import { ObserverProfile, GroupSkywatch, CommunityDiscussion } from '../types/community';
+import { DEFAULT_CAMERA_VIDEO_ID, isStaleOrLegacyVideoId } from '../utils/youtube';
 
 const SIGHTINGS_COLLECTION = 'sightings';
 const OBSERVERS_COLLECTION = 'observers';
@@ -314,11 +315,15 @@ export function subscribeToStationStreamConfig(
         if (snap.exists()) {
           const data = snap.data();
           if (data && typeof data.camId === 'string' && data.camId.trim()) {
+            const rawCamId = data.camId.trim();
+            const resolvedVideoId = isStaleOrLegacyVideoId(rawCamId)
+              ? DEFAULT_CAMERA_VIDEO_ID
+              : rawCamId;
             callback({
-              videoId: data.camId.trim(),
-              channelUrl: typeof data.channelUrl === 'string' ? data.channelUrl : `https://youtube.com/live/${data.camId.trim()}`,
+              videoId: resolvedVideoId,
+              channelUrl: `https://youtube.com/live/${resolvedVideoId}`,
               channelId: typeof data.channelId === 'string' ? data.channelId : undefined,
-              mode: data.mode === 'channel' ? 'channel' : 'video',
+              mode: 'video',
               updatedAt: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString(),
             });
           }
