@@ -48,6 +48,29 @@
   </head>
   <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-amber-500/30 selection:text-amber-200">
     <div id="root"></div>
+    <script>
+      (function () {
+        try {
+          var BUILD_SYNC_VERSION = 'raptorlens_live_sync_2026_11_01_v3';
+          if (localStorage.getItem('raptorlens_build_version') !== BUILD_SYNC_VERSION) {
+            localStorage.setItem('raptorlens_build_version', BUILD_SYNC_VERSION);
+            localStorage.setItem('raptorlens_station_primary_id', 'jDkhKX5-i_g');
+            localStorage.setItem('raptorlens_custom_cam', 'jDkhKX5-i_g');
+            localStorage.setItem('raptorlens_stream_mode', 'video');
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                regs.forEach(function (reg) { reg.unregister(); });
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then(function (names) {
+                names.forEach(function (name) { caches.delete(name); });
+              });
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

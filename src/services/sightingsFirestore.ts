@@ -314,19 +314,40 @@ export function subscribeToStationStreamConfig(
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          if (data && typeof data.camId === 'string' && data.camId.trim()) {
-            const rawCamId = data.camId.trim();
-            const resolvedVideoId = isStaleOrLegacyVideoId(rawCamId)
-              ? DEFAULT_CAMERA_VIDEO_ID
-              : rawCamId;
-            callback({
-              videoId: resolvedVideoId,
-              channelUrl: `https://youtube.com/live/${resolvedVideoId}`,
-              channelId: typeof data.channelId === 'string' ? data.channelId : undefined,
+          const rawCamId = data && typeof data.camId === 'string' ? data.camId.trim() : '';
+          const needsHeal = !rawCamId || isStaleOrLegacyVideoId(rawCamId) || data?.mode === 'channel';
+          const resolvedVideoId = needsHeal ? DEFAULT_CAMERA_VIDEO_ID : rawCamId;
+
+          if (needsHeal) {
+            saveStationStreamConfigToFirestore({
+              videoId: DEFAULT_CAMERA_VIDEO_ID,
+              channelUrl: `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`,
               mode: 'video',
-              updatedAt: typeof data.timestamp === 'string' ? data.timestamp : new Date().toISOString(),
-            });
+              callsign: 'STATION-AUTO-SYNC',
+            }).catch(() => {});
           }
+
+          callback({
+            videoId: resolvedVideoId,
+            channelUrl: `https://youtube.com/live/${resolvedVideoId}`,
+            channelId: typeof data?.channelId === 'string' ? data.channelId : undefined,
+            mode: 'video',
+            updatedAt: typeof data?.timestamp === 'string' ? data.timestamp : new Date().toISOString(),
+          });
+        } else {
+          // Initialize Firestore config with active broadcast so live site receives it immediately
+          saveStationStreamConfigToFirestore({
+            videoId: DEFAULT_CAMERA_VIDEO_ID,
+            channelUrl: `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`,
+            mode: 'video',
+            callsign: 'STATION-AUTO-SYNC',
+          }).catch(() => {});
+          callback({
+            videoId: DEFAULT_CAMERA_VIDEO_ID,
+            channelUrl: `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`,
+            mode: 'video',
+            updatedAt: new Date().toISOString(),
+          });
         }
       },
       (err) => {

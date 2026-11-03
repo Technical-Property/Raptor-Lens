@@ -56,6 +56,7 @@ import {
   saveSkywatchToFirestore,
   subscribeToDiscussions,
   saveDiscussionToFirestore,
+  saveStationStreamConfigToFirestore,
   isFakeSighting,
   isFakeObserver,
   isFakeSkywatch,
@@ -261,6 +262,17 @@ export default function App() {
       if (ok) {
         await seedSightingsIfEmpty();
         await seedCommunityIfEmpty();
+        try {
+          if (localStorage.getItem('raptorlens_firestore_cam_synced_v3') !== 'done') {
+            await saveStationStreamConfigToFirestore({
+              videoId: DEFAULT_CAMERA_VIDEO_ID,
+              channelUrl: `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`,
+              mode: 'video',
+              callsign: 'STATION-AUTO-SYNC',
+            });
+            localStorage.setItem('raptorlens_firestore_cam_synced_v3', 'done');
+          }
+        } catch {}
       }
 
       // Realtime listener for sightings
@@ -1596,7 +1608,7 @@ export default function App() {
                 <span>Admin Metrics</span>
               </button>
               <span>•</span>
-              <span className="text-neutral-300">RaptorLens UK • CHALK</span>
+              <span className="text-neutral-300">RaptorLens UK • CHALK • v2.4 Live</span>
             </div>
           </div>
         </footer>

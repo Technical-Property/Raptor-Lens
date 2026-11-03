@@ -325,35 +325,27 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   // Subscribe to real-time station stream config in Firestore + immediate Admin Console sync events
   useEffect(() => {
     const applySyncedConfig = (config: { videoId: string; channelUrl?: string; mode?: 'video' | 'channel' }) => {
-      if (config.videoId === 'OFFLINE' || config.videoId === CHALKTECH_CHANNEL_ID) {
-        setIsOfflineStandby(true);
-        try {
-          localStorage.setItem('raptorlens_station_primary_id', 'OFFLINE');
-        } catch {}
-        return;
-      }
-      if (config.videoId && !isRtmpStreamKeyOrUrl(config.videoId)) {
-        setIsOfflineStandby(false);
-        setStationPrimaryVideoId(config.videoId);
-        try {
-          localStorage.setItem('raptorlens_station_primary_id', config.videoId);
-        } catch {}
-        setCustomVideoId((prev) => {
-          // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
-          const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
-          if (!isGuestCam) {
-            return config.videoId;
-          }
-          return prev;
-        });
-        if (config.mode) {
-          setStreamMode(config.mode);
-        } else {
-          setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(config.videoId) ? 'channel' : 'video');
+      const targetVideoId =
+        !config.videoId || isStaleOrLegacyVideoId(config.videoId) || isRtmpStreamKeyOrUrl(config.videoId)
+          ? DEFAULT_CAMERA_VIDEO_ID
+          : config.videoId;
+
+      setIsOfflineStandby(false);
+      setStationPrimaryVideoId(targetVideoId);
+      try {
+        localStorage.setItem('raptorlens_station_primary_id', targetVideoId);
+      } catch {}
+      setCustomVideoId((prev) => {
+        // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
+        const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
+        if (!isGuestCam) {
+          return targetVideoId;
         }
-        if (config.channelUrl) {
-          setCustomChannelInput(config.channelUrl);
-        }
+        return prev;
+      });
+      setStreamMode('video');
+      if (config.channelUrl) {
+        setCustomChannelInput(config.channelUrl);
       }
     };
 
