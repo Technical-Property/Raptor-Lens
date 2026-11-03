@@ -14,7 +14,6 @@ import {
   Unlock, 
   CheckCircle2, 
   Clock, 
-  Sparkles, 
   X, 
   RefreshCw, 
   FileText, 
@@ -22,17 +21,15 @@ import {
   Compass, 
   Bug, 
   Check, 
-  UserPlus,
   AlertCircle,
   Mail,
   Send,
   Key,
   Copy,
   Video,
-  ExternalLink,
   ShieldAlert
 } from 'lucide-react';
-import { ObserverProfile, ExperienceLevel } from '../types/community';
+import { ObserverProfile } from '../types/community';
 import { SightingLog } from '../types/raptor';
 import { BetaFeedbackEntry } from './BetaFeedbackModal';
 import { SectorId } from '../types/sector';
@@ -40,13 +37,11 @@ import { UK_SECTORS } from '../data/sectors';
 import { tacticalAudio } from '../utils/audio';
 import { 
   getStoredAnalyticsEvents, 
-  trackEvent, 
   downloadCsvFile, 
   downloadJsonFile, 
   AnalyticsEvent 
 } from '../utils/analytics';
 import {
-  ADMIN_NOTIFICATION_EMAIL,
   sendTestNotificationEmail,
   getEmailNotificationLogs,
   EmailNotificationLog,
@@ -57,7 +52,6 @@ import {
 import {
   getActiveStreamKey,
   setActiveStreamKey,
-  CHALKTECH_CHANNEL_ID,
   DEFAULT_CAMERA_VIDEO_ID,
   extractYouTubeVideoId,
   checkYouTubeVideoEmbeddable,
@@ -79,13 +73,10 @@ interface AdminMetricsModalProps {
 
 type AdminTab = 'overview' | 'roster' | 'stream' | 'analytics' | 'events';
 
-const ADMIN_PASSKEY = 'raptor2026';
-
 export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
   isOpen,
   onClose,
   observers,
-  onAddObserver,
   sightings,
   betaFeedbacks,
   currentCallsign,
@@ -1156,7 +1147,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           type="text"
                           value={adminBroadcastUrl}
                           onChange={(e) => setAdminBroadcastUrl(e.target.value.trim())}
-                          placeholder="e.g. EpVJRK-RWrY or https://youtube.com/live/EpVJRK-RWrY"
+                          placeholder={`e.g. ${DEFAULT_CAMERA_VIDEO_ID} or https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`}
                           className="flex-1 bg-neutral-950 border border-neutral-750 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono focus:outline-none"
                         />
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1198,7 +1189,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={`https://studio.youtube.com/video/${extractYouTubeVideoId(adminBroadcastUrl) || 'EpVJRK-RWrY'}/edit`}
+                          href={`https://studio.youtube.com/video/${extractYouTubeVideoId(adminBroadcastUrl) || DEFAULT_CAMERA_VIDEO_ID}/edit`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
@@ -1207,7 +1198,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         </a>
                         <span className="text-neutral-600">|</span>
                         <a
-                          href={`https://www.youtube.com/live/${extractYouTubeVideoId(adminBroadcastUrl) || 'EpVJRK-RWrY'}`}
+                          href={`https://www.youtube.com/live/${extractYouTubeVideoId(adminBroadcastUrl) || DEFAULT_CAMERA_VIDEO_ID}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-red-400 hover:underline flex items-center gap-1 text-[11px]"

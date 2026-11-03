@@ -85,20 +85,6 @@ export function isFakeDiscussion(d: CommunityDiscussion): boolean {
 }
 
 /**
- * Disabled automatic fake seeding so the app starts completely fresh
- */
-export async function seedSightingsIfEmpty(): Promise<void> {
-  // No-op: fake sightings seeding disabled
-}
-
-/**
- * Disabled automatic fake community seeding so the app starts completely fresh
- */
-export async function seedCommunityIfEmpty(): Promise<void> {
-  // No-op: fake community seeding disabled
-}
-
-/**
  * Subscribe to real-time sighting updates from Firestore (excluding legacy seeded records)
  */
 export function subscribeToSightings(

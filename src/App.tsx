@@ -5,7 +5,6 @@ import { SectorSwitcher } from './components/SectorSwitcher';
 import { SilhouetteIdentifier } from './components/SilhouetteIdentifier';
 import { SilhouetteQuiz } from './components/SilhouetteQuiz';
 import { SightingLogger } from './components/SightingLogger';
-import { LiveStreamDispatches } from './components/LiveStreamDispatches';
 import { CommunityHub } from './components/CommunityHub';
 import { FieldGuideModal } from './components/FieldGuideModal';
 import { SightingModal } from './components/SightingModal';
@@ -31,22 +30,19 @@ import { WESSEX_HOTSPOTS } from './data/hotspots';
 import { RAPTOR_SPECIES } from './data/species';
 import { INITIAL_SIGHTINGS } from './data/initialSightings';
 import { INITIAL_DISPATCHES } from './data/dispatches';
-import { LIVESTREAM_CHANNELS } from './data/livestreams';
 import { INITIAL_OBSERVERS, INITIAL_SKYWATCHES, INITIAL_DISCUSSIONS } from './data/communityData';
 import { Hotspot, RaptorSpecies, SightingLog, RssDispatch, VerificationStatus } from './types/raptor';
 import { ObserverProfile, GroupSkywatch, CommunityDiscussion } from './types/community';
 import { SectorId } from './types/sector';
 import { UK_SECTORS } from './data/sectors';
-import { ShieldCheck, Compass, Eye, Sparkles, Users, Info, HelpCircle, Coffee, Target, BookOpen, Plus, Scale, HeartHandshake, X, Mail, Wind, Zap, BarChart3, Mountain } from 'lucide-react';
+import { ShieldCheck, Compass, Eye, Sparkles, Users, Info, HelpCircle, Target, BookOpen, Plus, Scale, HeartHandshake, X, Mail, Wind, Zap, BarChart3, Mountain } from 'lucide-react';
 import { tacticalAudio } from './utils/audio';
 
 import ridgewayLandscapeImg from './assets/images/ridgeway_landscape_1788791918648.jpg';
 import { evaluateCoordinatePrivacy } from './utils/schedule1Privacy';
 import { trackEvent } from './utils/analytics';
-import { getYouTubeChannelUrl, DEFAULT_CAMERA_VIDEO_ID } from './utils/youtube';
+import { DEFAULT_CAMERA_VIDEO_ID } from './utils/youtube';
 import { 
-  seedSightingsIfEmpty, 
-  seedCommunityIfEmpty,
   subscribeToSightings, 
   saveSightingToFirestore,
   addCorroborationToFirestore,
@@ -66,7 +62,7 @@ import { validateFirestoreConnection } from './services/firebase';
 import { sendObserverSignupEmail, ADMIN_NOTIFICATION_EMAIL } from './services/emailNotification';
 
 const CLEAN_SLATE_MIGRATION_KEY = 'raptorlens_clean_slate_v1';
-const STREAM_LIVE_SYNC_MIGRATION_KEY = 'raptorlens_stream_live_sync_v2';
+const STREAM_LIVE_SYNC_MIGRATION_KEY = 'raptorlens_stream_live_sync_v3';
 
 function ensureCleanSlateStorage() {
   try {
@@ -247,8 +243,6 @@ export default function App() {
     }
   });
 
-  const [isFirestoreConnected, setIsFirestoreConnected] = useState<boolean>(false);
-
   // Initialize Firestore connection and real-time subscription
   useEffect(() => {
     let unsubscribeSightings: (() => void) | undefined;
@@ -258,19 +252,16 @@ export default function App() {
 
     async function initFirestore() {
       const ok = await validateFirestoreConnection();
-      setIsFirestoreConnected(ok);
       if (ok) {
-        await seedSightingsIfEmpty();
-        await seedCommunityIfEmpty();
         try {
-          if (localStorage.getItem('raptorlens_firestore_cam_synced_v3') !== 'done') {
+          if (localStorage.getItem('raptorlens_firestore_cam_synced_v4') !== 'done') {
             await saveStationStreamConfigToFirestore({
               videoId: DEFAULT_CAMERA_VIDEO_ID,
               channelUrl: `https://youtube.com/live/${DEFAULT_CAMERA_VIDEO_ID}`,
               mode: 'video',
               callsign: 'STATION-AUTO-SYNC',
             });
-            localStorage.setItem('raptorlens_firestore_cam_synced_v3', 'done');
+            localStorage.setItem('raptorlens_firestore_cam_synced_v4', 'done');
           }
         } catch {}
       }

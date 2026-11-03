@@ -7,31 +7,20 @@ import {
   Car, 
   MapPin, 
   Clock, 
-  ShieldAlert, 
   CheckCircle2, 
   Sparkles, 
   Navigation, 
-  Radio, 
-  ChevronRight, 
   MessageSquare, 
   Compass,
-  Settings,
   Video,
   ExternalLink,
   Tv,
   Play,
-  HelpCircle,
   AlertTriangle,
   RefreshCw,
-  CheckCircle,
   X,
-  Camera,
-  FlipHorizontal,
   ZoomIn,
   ZoomOut,
-  Wifi,
-  Info,
-  Target,
   Download,
   Heart,
   Share2,
@@ -39,22 +28,17 @@ import {
   Binoculars,
   Volume2,
   Moon,
-  Sun,
-  TrendingUp,
-  Key,
-  Copy,
-  Lock
+  TrendingUp
 } from 'lucide-react';
-import { LivestreamCam, RssDispatch, SightingLog } from '../types/raptor';
+import { RssDispatch, SightingLog } from '../types/raptor';
 import { LIVESTREAM_CHANNELS } from '../data/livestreams';
 import { BARBURY_PTZ_PRESETS, BARBURY_SUMMIT_WEATHER, BarburySummitWeather } from '../data/camPresets';
 import { RECOMMENDED_FIELD_KIT, buildAmazonUkAffiliateUrl } from '../data/affiliateKit';
 import { fetchLiveBarburyWeather } from '../services/weatherService';
-import { subscribeToStationStreamConfig, saveStationStreamConfigToFirestore } from '../services/sightingsFirestore';
+import { subscribeToStationStreamConfig } from '../services/sightingsFirestore';
 import { tacticalAudio } from '../utils/audio';
 import { SectorId } from '../types/sector';
 import { 
-  extractYouTubeVideoId, 
   extractYouTubeChannelInfo, 
   getYouTubeChannelUrl, 
   buildYouTubeEmbedSrc,
@@ -62,18 +46,11 @@ import {
   StreamPlayMode,
   DEFAULT_CAMERA_VIDEO_ID,
   CHALKTECH_CHANNEL_ID,
-  CHALKTECH_VERIFIED_EMBED_ID,
-  DEMO_NATURE_VIDEO_ID,
   POPULAR_CAMERA_PRESETS,
-  PEREGRINE_UK_VIDEO_ID,
   EAGLE_LIVE_VIDEO_ID,
   isLocalIpAddress,
-  formatLocalIpUrl,
   isRtmpStreamKeyOrUrl,
-  isStaleOrLegacyVideoId,
-  getActiveStreamKey,
-  setActiveStreamKey,
-  ACTIVE_STATION_STREAM_KEY
+  isStaleOrLegacyVideoId
 } from '../utils/youtube';
 
 interface SummitTrailConditionsViewProps {
@@ -90,11 +67,8 @@ interface SummitTrailConditionsViewProps {
 }
 
 export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps> = ({
-  onSwitchToRadar,
   onOpenLogModal,
-  onOpenGuide,
   onOpenDonate,
-  onOpenAdminMetrics,
   activeSectorId = 'ridgeway-wessex',
   currentCallsign = 'RIDGE-WALKER',
   onAddDispatch,
@@ -120,7 +94,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     }
   });
   const [isPrimaryEmbedBlocked, setIsPrimaryEmbedBlocked] = useState<boolean>(false);
-  const [forceDirectLiveEmbed, setForceDirectLiveEmbed] = useState<boolean>(false);
   const [isOfflineStandby, setIsOfflineStandby] = useState<boolean>(false);
   const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
   const [customVideoId, setCustomVideoId] = useState<string>(() => {
@@ -148,8 +121,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       return 'video';
     }
   });
-  const [showFeedInput, setShowFeedInput] = useState<boolean>(false);
-  const [showTroubleshootModal, setShowTroubleshootModal] = useState<boolean>(false);
   const [weather, setWeather] = useState<BarburySummitWeather>(BARBURY_SUMMIT_WEATHER);
   const [isWeatherLive, setIsWeatherLive] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'parking' | 'distances' | 'dispatches' | 'kit'>('parking');
@@ -180,19 +151,17 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
   const liveEdgeSecondsRef = useRef<number>(0);
   const currentPlayheadRef = useRef<number>(0);
   const pendingSeekOffsetRef = useRef<number | null>(null);
-  const sessionStartRef = useRef<number>(Date.now());
 
   const [isBreezeActive, setIsBreezeActive] = useState<boolean>(tacticalAudio.isAmbientPlaying);
   const [activeAudioCall, setActiveAudioCall] = useState<string | null>(null);
 
   // Device Camera (Webcam / Smartphone Camera) State
   const [isDeviceCamActive, setIsDeviceCamActive] = useState<boolean>(false);
-  const [deviceCamFacing, setDeviceCamFacing] = useState<'environment' | 'user'>('environment');
+  const [deviceCamFacing] = useState<'environment' | 'user'>('environment');
   const [deviceCamZoom, setDeviceCamZoom] = useState<number>(1);
   const [deviceCamError, setDeviceCamError] = useState<string | null>(null);
   const [deviceCamLoading, setDeviceCamLoading] = useState<boolean>(false);
   const [isReticleActive, setIsReticleActive] = useState<boolean>(true);
-  const [snapshotSuccess, setSnapshotSuccess] = useState<string | null>(null);
   const deviceVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
@@ -249,13 +218,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
     tacticalAudio.playRadarPing(700);
   };
 
-  const toggleFacingMode = () => {
-    const nextFacing = deviceCamFacing === 'environment' ? 'user' : 'environment';
-    setDeviceCamFacing(nextFacing);
-    tacticalAudio.playRadarPing(850);
-    startDeviceCamera(nextFacing);
-  };
-
   const takeSnapshot = () => {
     if (!deviceVideoRef.current) return;
     try {
@@ -272,8 +234,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         link.download = `raptorlens-spotter-${Date.now()}.jpg`;
         link.href = dataUrl;
         link.click();
-        setSnapshotSuccess('Photo captured and saved to your downloads!');
-        setTimeout(() => setSnapshotSuccess(null), 4000);
       }
     } catch (e) {
       console.warn('Snapshot error:', e);
@@ -336,7 +296,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         localStorage.setItem('raptorlens_station_primary_id', targetVideoId);
       } catch {}
       setCustomVideoId((prev) => {
-        // If viewing primary station cam (or default), auto-update to the latest synced live stream ID
         const isGuestCam = POPULAR_CAMERA_PRESETS.slice(1).some((p) => p.videoId === prev);
         if (!isGuestCam) {
           return targetVideoId;
@@ -366,45 +325,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
       window.removeEventListener('raptorlens-station-stream-synced', handleWindowSync);
     };
   }, []);
-
-  const handleSyncStationStream = async (rawInput: string) => {
-    const trimmed = rawInput.trim();
-    if (!trimmed) return;
-
-    // If an RTMP stream key is entered (e.g. xxxx-xxxx-xxxx-xxxx-xxxx):
-    if (isRtmpStreamKeyOrUrl(trimmed)) {
-      tacticalAudio.playConfirmChime();
-      setActiveStreamKey(trimmed);
-      setSyncSuccessToast('✓ Private Stream Key saved locally in this browser (never shared publicly).');
-      setTimeout(() => setSyncSuccessToast(null), 6000);
-      return;
-    }
-
-    const extractedId = extractYouTubeVideoId(trimmed);
-    if (!extractedId) return;
-
-    tacticalAudio.playConfirmChime();
-    const isChannel = /^UC[a-zA-Z0-9_-]{22}$/.test(extractedId);
-    const nextChannelUrl = isChannel
-      ? `https://www.youtube.com/channel/${extractedId}/live`
-      : `https://youtube.com/live/${extractedId}`;
-
-    setStationPrimaryVideoId(extractedId);
-    setCustomVideoId(extractedId);
-    setCustomChannelInput(nextChannelUrl);
-    setStreamMode(isChannel ? 'channel' : 'video');
-    setPlayerRefreshKey((prev) => prev + 1);
-
-    await saveStationStreamConfigToFirestore({
-      videoId: extractedId,
-      channelUrl: nextChannelUrl,
-      mode: isChannel ? 'channel' : 'video',
-      callsign: currentCallsign,
-    });
-
-    setSyncSuccessToast(`✓ Live Stream synced to app (${extractedId})! Playing live now.`);
-    setTimeout(() => setSyncSuccessToast(null), 5000);
-  };
 
   // Live Open-Meteo Barbury / Hackpen Weather & Sunset Sync
   useEffect(() => {
@@ -2403,109 +2323,6 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Stream Troubleshooting & Setup Modal */}
-      {showTroubleshootModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-neutral-900 border border-neutral-700/80 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-                <h3 className="font-display-tactical text-base sm:text-lg font-bold text-neutral-100">
-                  Why is my stream black or "Video unavailable"?
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowTroubleshootModal(false)}
-                className="text-neutral-400 hover:text-neutral-100 text-sm font-bold cursor-pointer p-1 rounded-lg hover:bg-neutral-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 font-sans text-xs text-neutral-300 leading-relaxed">
-              <p>
-                If your camera stream is black or says <strong>"Video unavailable"</strong>, here is why and how to fix it immediately:
-              </p>
-
-              {/* 1-Click Instant Solutions */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                <span className="font-bold text-amber-300 flex items-center gap-1.5 font-mono-tactical text-[11px]">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>1-Click Live Raptor Feeds:</span>
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono-tactical text-xs">
-                  {POPULAR_CAMERA_PRESETS.slice(0, 4).map((cam) => {
-                    const isPrimary = cam.id === 'raptorlens-station';
-                    const targetVideoId = isPrimary ? stationPrimaryVideoId : cam.videoId;
-                    return (
-                      <button
-                        key={cam.id}
-                        type="button"
-                        onClick={() => {
-                          tacticalAudio.playRadarPing(880);
-                          setCustomVideoId(targetVideoId);
-                          setCustomChannelInput(cam.channelUrl);
-                          setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(targetVideoId) ? 'channel' : 'video');
-                          setShowTroubleshootModal(false);
-                        }}
-                        className="p-2 rounded-lg bg-neutral-950 hover:bg-neutral-800 border border-amber-500/50 text-amber-300 text-left cursor-pointer flex items-center justify-between"
-                      >
-                        <span className="truncate">{cam.shortLabel}</span>
-                        <span className="text-[10px] text-emerald-400 font-bold shrink-0 ml-1">LIVE</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2 font-mono-tactical text-[11px]">
-                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
-                  <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <span>1. Station Live Camera:</span>
-                  </div>
-                  <p className="font-sans text-neutral-400">
-                    The primary Station Live Camera automatically cycles across four views: <strong>Hackpen Hill View</strong>, <strong>Barbury Fort View</strong>, <strong>Field View</strong>, and <strong>Perch View</strong>.
-                  </p>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
-                  <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <span>2. Guest UK &amp; International Raptor Cams:</span>
-                  </div>
-                  <p className="font-sans text-neutral-400">
-                    During night hours or heavy hill fog on the Marlborough Downs, you can switch at any time to partner 24/7 live cameras including the <strong>UK Barn Owl &amp; Kestrel Cam</strong>, <strong>UK Peregrine Cam</strong>, <strong>UK Rutland Osprey Cam</strong>, or <strong>Big Bear Bald Eagle Nest</strong>.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800 flex-wrap">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    tacticalAudio.playRadarPing(880);
-                    setCustomVideoId(stationPrimaryVideoId);
-                    setStreamMode(/^UC[a-zA-Z0-9_-]{22}$/.test(stationPrimaryVideoId) ? 'channel' : 'video');
-                    setShowTroubleshootModal(false);
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs font-mono-tactical cursor-pointer transition-colors shadow-sm"
-                >
-                  📡 Reset to Station Cam
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowTroubleshootModal(false)}
-                  className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-750 text-neutral-300 text-xs font-mono-tactical cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
