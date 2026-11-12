@@ -189,6 +189,9 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
     };
 
     onSaveSighting(newSighting);
+    if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+      return;
+    }
     setIsLoggedSuccess(true);
     setNotes('');
 

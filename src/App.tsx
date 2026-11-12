@@ -362,6 +362,22 @@ export default function App() {
     locationName?: string;
     speciesId?: string;
   }>({});
+  const [pendingLogModalAfterAuth, setPendingLogModalAfterAuth] = useState<boolean>(false);
+
+  const handleRequestOpenLogModal = (prefill?: {
+    coords?: [number, number];
+    locationName?: string;
+    speciesId?: string;
+  }) => {
+    setLogModalPrefill(prefill || {});
+    if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+      setPendingLogModalAfterAuth(true);
+      showToast('🔒 Please sign in or register an Observer Callsign to log a sighting.');
+      setIsLoginModalOpen(true);
+      return;
+    }
+    setIsLogModalOpen(true);
+  };
 
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [selectedSpecies, setSelectedSpecies] = useState<RaptorSpecies | null>(null);
@@ -511,6 +527,12 @@ export default function App() {
   };
 
   const handleSaveSighting = (newSighting: SightingLog) => {
+    if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+      showToast('🔒 Please sign in or register an Observer Callsign to log a sighting.');
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     const rawCoords: [number, number] = (
       Array.isArray(newSighting.coordinates) &&
       newSighting.coordinates.length >= 2 &&
@@ -530,6 +552,7 @@ export default function App() {
 
     const processedSighting: SightingLog = {
       ...newSighting,
+      observerCallsign: currentCallsign,
       coordinates: privacy.displayCoordinates,
       locationName: privacy.generalizedLocation,
       isSchedule1: privacy.isSensitive,
@@ -712,6 +735,10 @@ export default function App() {
       notifiedAdmin: ADMIN_NOTIFICATION_EMAIL,
     });
     showToast(`✓ Observer Credentials Verified: Welcome ${newProfile.callsign}!`);
+    if (pendingLogModalAfterAuth) {
+      setPendingLogModalAfterAuth(false);
+      setIsLogModalOpen(true);
+    }
   };
 
   const handleResetObserverPassword = (updatedProfile: ObserverProfile) => {
@@ -727,6 +754,10 @@ export default function App() {
     });
     saveObserverToFirestore(updatedProfile);
     showToast(`✓ Password updated and synced for ${updatedProfile.callsign}`);
+    if (pendingLogModalAfterAuth) {
+      setPendingLogModalAfterAuth(false);
+      setIsLogModalOpen(true);
+    }
   };
 
   // Observer Authentication & Account Handlers
@@ -737,7 +768,11 @@ export default function App() {
       if (exists) return prev;
       return [profile, ...prev];
     });
-    showToast(`✓ Authenticated: ${profile.callsign} (${profile.rank})`);
+    showToast(`✓ Authenticated: ${profile.callsign} (${profile.rank || profile.badge})`);
+    if (pendingLogModalAfterAuth) {
+      setPendingLogModalAfterAuth(false);
+      setIsLogModalOpen(true);
+    }
   };
 
   const handleLoginCustomCallsign = (callsign: string, homeHotspot?: string, passcode?: string) => {
@@ -771,11 +806,15 @@ export default function App() {
       }
     }
     showToast(`✓ Signed in & registered callsign: ${normalized}`);
+    if (pendingLogModalAfterAuth) {
+      setPendingLogModalAfterAuth(false);
+      setIsLogModalOpen(true);
+    }
   };
 
   const handleLogoutToGuest = () => {
     setCurrentCallsign('GUEST-SCOUT');
-    showToast('Switched to Guest Observer. Observations will be marked for peer audit.');
+    showToast('Signed out. Sign in with your callsign to log sightings.');
   };
 
   // Sighting Verification & Audit Trail Handlers
@@ -899,29 +938,26 @@ export default function App() {
 
   // Quick action from Map: click coordinate
   const handleLogAtCoordinate = (lat: number, lng: number, locationGuess?: string) => {
-    setLogModalPrefill({
+    handleRequestOpenLogModal({
       coords: [lat, lng],
       locationName: locationGuess || `Wessex Downs Sector (${lat}, ${lng})`,
     });
-    setIsLogModalOpen(true);
   };
 
   // Quick action from Species list
   const handleLogFromSpecies = (species: RaptorSpecies) => {
-    setLogModalPrefill({
+    handleRequestOpenLogModal({
       speciesId: species.id,
       locationName: species.bestHotspots[0] || 'Barbury Castle Ramparts',
     });
-    setIsLogModalOpen(true);
   };
 
   // Quick action from Hotspot detail
   const handleLogFromHotspot = (hotspot: Hotspot) => {
-    setLogModalPrefill({
+    handleRequestOpenLogModal({
       coords: hotspot.coordinates,
       locationName: hotspot.name,
     });
-    setIsLogModalOpen(true);
   };
 
   // Fly to hotspot from detail modal or RSS
@@ -1016,8 +1052,7 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onOpenLogModal={() => {
-            setLogModalPrefill({});
-            setIsLogModalOpen(true);
+            handleRequestOpenLogModal({});
           }}
           sightingsCount={sightings.length}
           unreadDispatchesCount={dispatches.length}
@@ -1381,8 +1416,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     tacticalAudio.playRadarPing(950);
-                    setLogModalPrefill({});
-                    setIsLogModalOpen(true);
+                    handleRequestOpenLogModal({});
                   }}
                   className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20 transition-all self-start sm:self-auto hover:scale-105 active:scale-95"
                 >
@@ -1398,8 +1432,7 @@ export default function App() {
                   speciesList={speciesList}
                   currentCallsign={currentCallsign}
                   onOpenSightingModal={() => {
-                    setLogModalPrefill({});
-                    setIsLogModalOpen(true);
+                    handleRequestOpenLogModal({});
                   }}
                   onSelectSighting={(s) => {
                     const sp = speciesList.find((p) => p.id === s.speciesId);
@@ -1485,8 +1518,7 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   tacticalAudio.playRadarPing(950);
-                  setLogModalPrefill({});
-                  setIsLogModalOpen(true);
+                  handleRequestOpenLogModal({});
                 }}
                 className="min-h-[48px] py-1 px-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-amber-500/25 cursor-pointer transition-transform active:scale-95"
               >
@@ -1639,8 +1671,7 @@ export default function App() {
           onNavigateTab={(tab) => setActiveTab(tab)}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onOpenLogModal={() => {
-            setLogModalPrefill({ coords: null, locationName: '', speciesId: 'red-kite' });
-            setIsLogModalOpen(true);
+            handleRequestOpenLogModal({ coords: undefined, locationName: '', speciesId: 'red-kite' });
           }}
           onToggleLiteMode={() => setIsLiteMode((prev) => !prev)}
           onOpenBetaFeedback={() => setIsBetaFeedbackOpen(true)}
@@ -1668,6 +1699,8 @@ export default function App() {
           initialSectorId={activeSectorId !== 'all' ? activeSectorId : 'ridgeway-wessex'}
           currentCallsign={currentCallsign}
           currentObserverProfile={currentObserverProfile}
+          onOpenLogin={() => setIsLoginModalOpen(true)}
+          onOpenRegister={() => setIsRegisterModalOpen(true)}
         />
 
         <HotspotDetailModal

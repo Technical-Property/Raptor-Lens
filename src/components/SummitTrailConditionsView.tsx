@@ -503,6 +503,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         ],
       };
       onSaveSighting(newSighting);
+      if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+        return;
+      }
     }
 
     if (onAddDispatch) {
@@ -755,6 +758,9 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
         ],
       };
       onSaveSighting(dvrSighting);
+      if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+        return;
+      }
     }
 
     if (onAddDispatch) {

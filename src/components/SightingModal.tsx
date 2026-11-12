@@ -19,6 +19,8 @@ interface SightingModalProps {
   initialSectorId?: SectorId;
   currentCallsign?: string;
   currentObserverProfile?: ObserverProfile | null;
+  onOpenLogin?: () => void;
+  onOpenRegister?: () => void;
 }
 
 export const SightingModal: React.FC<SightingModalProps> = ({
@@ -33,6 +35,8 @@ export const SightingModal: React.FC<SightingModalProps> = ({
   initialSectorId,
   currentCallsign = 'GUEST-SCOUT',
   currentObserverProfile = null,
+  onOpenLogin,
+  onOpenRegister,
 }) => {
   const [speciesId, setSpeciesId] = useState<string>(initialSpeciesId || speciesList[0]?.id || 'red-kite');
   const [selectedHotspotId, setSelectedHotspotId] = useState<string>(
@@ -86,10 +90,13 @@ export const SightingModal: React.FC<SightingModalProps> = ({
         setLng(-1.7895);
       }
       if (initialSectorId) setSectorId(initialSectorId);
+      setObserverCallsign(currentCallsign);
     }
-  }, [isOpen, initialSpeciesId, initialLocationName, initialCoordinates, initialSectorId]);
+  }, [isOpen, initialSpeciesId, initialLocationName, initialCoordinates, initialSectorId, currentCallsign]);
 
   if (!isOpen) return null;
+
+  const isGuest = !currentCallsign || currentCallsign === 'GUEST-SCOUT';
 
   const selectedSpecies = speciesList.find((s) => s.id === speciesId) || speciesList[0];
   const safeLat = Number.isFinite(Number(lat)) ? Number(lat) : 51.4835;
@@ -137,6 +144,13 @@ export const SightingModal: React.FC<SightingModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGuest) {
+      if (onOpenLogin) {
+        onClose();
+        onOpenLogin();
+      }
+      return;
+    }
     tacticalAudio.playConfirmChime();
 
     const now = new Date();
@@ -238,47 +252,73 @@ export const SightingModal: React.FC<SightingModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 text-neutral-200 font-mono-tactical text-xs">
           {/* Active Observer Identity Strip */}
-          <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <UserCheck className="w-4 h-4" />
-                </span>
-                <div>
-                  <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">TRANSMITTING OBSERVER</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={observerCallsign}
-                      onChange={(e) => setObserverCallsign(e.target.value)}
-                      placeholder="e.g. RIDGEWAY-SCOUT-12"
-                      className="bg-neutral-950 border border-neutral-700 rounded px-2 py-0.5 text-xs text-amber-300 font-bold font-mono focus:outline-none focus:border-amber-400"
-                    />
-                    {currentObserverProfile?.rank && (
-                      <span className="text-[10px] text-neutral-400">({currentObserverProfile.rank})</span>
-                    )}
-                  </div>
+          {isGuest ? (
+            <div className="bg-amber-500/10 border border-amber-500/50 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-display-tactical text-sm font-bold text-amber-300 block">
+                    Sign In Required to Log Sightings
+                  </span>
+                  <p className="text-xs text-neutral-300 font-sans leading-relaxed">
+                    To protect data quality and prevent anonymous spam, please sign in with your Observer Callsign or register a free profile before submitting a sighting.
+                  </p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded flex items-center gap-1 font-bold">
-                  <ShieldCheck className="w-3 h-3" />
-                  {currentObserverProfile?.isSpecialist ? 'Specialist Verified Tier' : 'Peer Audited Tier'}
-                </span>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {onOpenLogin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenLogin();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold cursor-pointer"
+                  >
+                    Sign In to Callsign
+                  </button>
+                )}
+                {onOpenRegister && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenRegister();
+                    }}
+                    className="px-4 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-amber-500/40 text-amber-300 font-mono-tactical text-xs font-bold cursor-pointer"
+                  >
+                    Register New Observer (Free)
+                  </button>
+                )}
               </div>
             </div>
+          ) : (
+            <div className="bg-neutral-900/90 border border-neutral-800 rounded-xl p-3 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <UserCheck className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">SIGNED-IN OBSERVER</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-amber-300 font-bold font-mono">{currentCallsign}</span>
+                      {currentObserverProfile?.rank && (
+                        <span className="text-[10px] text-neutral-400">({currentObserverProfile.rank})</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-            {/* Guest vs Community Guidance Note */}
-            {!currentObserverProfile && (
-              <div className="pt-2 border-t border-neutral-800/80 flex items-start gap-2 text-[11px] text-neutral-300 font-sans leading-relaxed">
-                <span className="text-amber-400 shrink-0 font-bold">ℹ</span>
-                <span>
-                  <strong>Tip for Observers:</strong> You can submit sightings immediately under your chosen callsign. All records undergo peer review under UK wildlife standards.
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded flex items-center gap-1 font-bold">
+                    <ShieldCheck className="w-3 h-3" />
+                    {currentObserverProfile?.isSpecialist ? 'Specialist Verified Tier' : 'Verified Observer'}
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Target Species Selector & Silhouette Preview */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-neutral-900/70 p-3 rounded-xl border border-neutral-800">
@@ -483,11 +523,9 @@ export const SightingModal: React.FC<SightingModalProps> = ({
               <label className="text-neutral-400 font-bold block mb-1">OBSERVER CALLSIGN</label>
               <input
                 type="text"
-                value={observerCallsign}
-                onChange={(e) => setObserverCallsign(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 text-neutral-200 rounded-lg p-2 focus:outline-none focus:border-amber-500"
-                placeholder="e.g. DOWNS-WATCH-1"
-                required
+                value={currentCallsign}
+                readOnly
+                className="w-full bg-neutral-950 border border-neutral-800 text-amber-300 font-bold rounded-lg p-2 focus:outline-none cursor-not-allowed"
               />
             </div>
 
