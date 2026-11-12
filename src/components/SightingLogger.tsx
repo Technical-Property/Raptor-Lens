@@ -20,7 +20,9 @@ import {
   History,
   Navigation,
   Sparkles,
-  Lock
+  Lock,
+  Share2,
+  Check
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
 import { 
@@ -64,6 +66,25 @@ export const SightingLogger: React.FC<SightingLoggerProps> = ({
   const [selectedObserverFilter, setSelectedObserverFilter] = useState<string>('ALL');
   const [selectedRecencyFilter, setSelectedRecencyFilter] = useState<RecencyWindow>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'count'>('newest');
+  const [copiedSightingId, setCopiedSightingId] = useState<string | null>(null);
+
+  const handleShareSighting = (sighting: SightingLog) => {
+    tacticalAudio.playConfirmChime();
+    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://raptorlens.org';
+    const shareText = `🦅 Raptor Sighting on RaptorLens UK: ${sighting.count}x ${sighting.speciesName} (${sighting.behavior}) spotted near ${sighting.locationName} by ${sighting.observerCallsign}! Watch live & explore the radar map:`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: `RaptorLens UK: ${sighting.speciesName} Sighting`,
+        text: shareText,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`).then(() => {
+        setCopiedSightingId(sighting.id);
+        setTimeout(() => setCopiedSightingId(null), 2500);
+      }).catch(() => {});
+    }
+  };
 
   // Distinct observer callsigns
   const observerCallsigns = useMemo(() => {
@@ -612,6 +633,24 @@ export const SightingLogger: React.FC<SightingLoggerProps> = ({
                       className="px-2.5 py-1 rounded bg-neutral-900 hover:bg-neutral-800 text-cyan-300 border border-cyan-500/40 text-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Compass className="w-3 h-3" /> Locate on Radar
+                    </button>
+
+                    <button
+                      onClick={() => handleShareSighting(sighting)}
+                      className="px-2.5 py-1 rounded bg-neutral-900 hover:bg-neutral-800 text-emerald-300 border border-emerald-500/40 text-xs flex items-center gap-1 cursor-pointer"
+                      title="Share sighting on WhatsApp, social media, or copy link"
+                    >
+                      {copiedSightingId === sighting.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-3 h-3 text-emerald-400" />
+                          <span>Share</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

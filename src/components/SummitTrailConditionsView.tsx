@@ -940,8 +940,58 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
             </button>
 
             <button
+              type="button"
+              onClick={() => {
+                tacticalAudio.playConfirmChime();
+                const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://raptorlens.org';
+                const shareText = `🦅 Watch the 24/7 Live Barbury Castle & Ridgeway Camera + Wiltshire Weather & Raptor Map on RaptorLens UK!`;
+                if (typeof navigator !== 'undefined' && navigator.share) {
+                  navigator.share({
+                    title: 'RaptorLens UK – Live Ridgeway Webcam & Raptor Map',
+                    text: shareText,
+                    url: shareUrl,
+                  }).catch(() => {});
+                } else {
+                  navigator.clipboard.writeText(`${shareText} ${shareUrl}`).then(() => {
+                    setCopiedShareLink(true);
+                    setTimeout(() => setCopiedShareLink(false), 3000);
+                  }).catch(() => {});
+                }
+              }}
+              className="bg-neutral-800 hover:bg-neutral-700 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Share live camera link on WhatsApp, Facebook, X, or copy link"
+            >
+              {copiedShareLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Link Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Share Live Cam</span>
+                </>
+              )}
+            </button>
+
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent('🦅 Watch the 24/7 Live Barbury Castle & Ridgeway Camera + Wiltshire Weather & Raptor Map: https://raptorlens.org')}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => tacticalAudio.playRadarPing(880)}
+              className="hidden sm:flex bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 px-2.5 py-1.5 rounded-lg text-xs font-semibold items-center gap-1 cursor-pointer transition-colors"
+              title="Share on WhatsApp"
+            >
+              <span>WhatsApp</span>
+            </a>
+
+            <button
               onClick={() => {
                 tacticalAudio.playRadarPing(880);
+                if (!currentCallsign || currentCallsign === 'GUEST-SCOUT') {
+                  onOpenLogModal('Barbury Castle');
+                  return;
+                }
                 setShowQuickSpotModal(true);
               }}
               className="bg-amber-500 hover:bg-amber-400 text-neutral-950 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors shadow"

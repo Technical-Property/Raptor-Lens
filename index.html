@@ -3,18 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RaptorLens UK: Tactical Ridge, Weather & Wildlife Radar</title>
-    <meta name="description" content="Tactical ridge weather, live summit camera telemetry, and downland raptor radar for walkers, hikers, and wildlife observers across The Ridgeway National Trail and North Wessex Downs." />
+    <title>RaptorLens UK – Live Barbury Castle &amp; Ridgeway Webcam, Weather &amp; Raptor Map</title>
+    <meta name="description" content="Watch the 24/7 live Barbury Castle &amp; Ridgeway webcam, check real-time Wiltshire downland wind and trail conditions, and log UK birds of prey on the interactive Raptor Map." />
+    <meta name="keywords" content="Barbury Castle webcam, Ridgeway live camera, Wiltshire weather webcam, Hackpen Hill weather, UK raptor map, Red Kite sightings Wiltshire, Marlborough Downs webcam, North Wessex Downs walks, birdwatching UK live cam" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href="https://raptorlens.org" />
     <meta property="og:site_name" content="RaptorLens UK" />
-    <meta property="og:title" content="RaptorLens UK: Tactical Ridge, Weather & Wildlife Radar" />
-    <meta property="og:description" content="Tactical ridge weather, live summit camera telemetry, and downland raptor radar for walkers, hikers, and wildlife observers across The Ridgeway National Trail and North Wessex Downs." />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:title" content="RaptorLens UK – Live Barbury Castle &amp; Ridgeway Webcam, Weather &amp; Raptor Map" />
+    <meta property="og:description" content="Watch the 24/7 live Barbury Castle &amp; Ridgeway webcam, check real-time Wiltshire downland wind and trail conditions, and log UK birds of prey on the interactive Raptor Map." />
     <meta property="og:url" content="https://raptorlens.org" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://raptorlens.org/pwa-512x512.png" />
+    <meta property="og:image:alt" content="RaptorLens UK Live Ridgeway Webcam &amp; Raptor Radar" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="RaptorLens UK: Tactical Ridge, Weather & Wildlife Radar" />
-    <meta name="twitter:description" content="Tactical ridge weather, live summit camera telemetry, and downland raptor radar for walkers, hikers, and wildlife observers across The Ridgeway National Trail and North Wessex Downs." />
+    <meta name="twitter:title" content="RaptorLens UK – Live Barbury Castle &amp; Ridgeway Webcam, Weather &amp; Raptor Map" />
+    <meta name="twitter:description" content="Watch the 24/7 live Barbury Castle &amp; Ridgeway webcam, check real-time Wiltshire downland wind and trail conditions, and log UK birds of prey on the interactive Raptor Map." />
     <meta name="twitter:image" content="https://raptorlens.org/pwa-512x512.png" />
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -27,18 +31,41 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "RaptorLens UK",
-        "alternateName": "RaptorLens (SkyScout UK)",
-        "url": "https://raptorlens.org",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "All",
-        "description": "Tactical ridge weather, live summit camera telemetry, and downland raptor radar for walkers, hikers, and wildlife observers across The Ridgeway National Trail and North Wessex Downs.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "GBP"
-        }
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "name": "RaptorLens UK",
+            "alternateName": "RaptorLens Chalk & Trail Radar",
+            "url": "https://raptorlens.org",
+            "applicationCategory": "LifestyleApplication",
+            "operatingSystem": "All",
+            "description": "24/7 live Barbury Castle and Ridgeway summit camera, Wiltshire downland weather telemetry, and interactive UK bird of prey sighting radar.",
+            "areaServed": {
+              "@type": "AdministrativeArea",
+              "name": "North Wessex Downs, Wiltshire & The Ridgeway National Trail, UK"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "GBP"
+            }
+          },
+          {
+            "@type": "VideoObject",
+            "name": "Live Barbury Castle & Ridgeway Summit Camera (24/7 UK Wildlife & Weather Stream)",
+            "description": "Live 24/7 streaming camera overlooking Barbury Castle Iron Age hillfort, Hackpen Hill, and The Ridgeway National Trail in Wiltshire, UK.",
+            "thumbnailUrl": [
+              "https://i.ytimg.com/vi/CwxJ1aXfVJs/maxresdefault.jpg"
+            ],
+            "uploadDate": "2026-11-01T00:00:00Z",
+            "embedUrl": "https://www.youtube.com/embed/CwxJ1aXfVJs",
+            "publication": {
+              "@type": "BroadcastEvent",
+              "isLiveBroadcast": true,
+              "startDate": "2026-11-01T00:00:00Z"
+            }
+          }
+        ]
       }
     </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
@@ -51,11 +78,11 @@
     <script>
       (function () {
         try {
-          var BUILD_SYNC_VERSION = 'raptorlens_live_sync_2026_11_01_v3';
+          var BUILD_SYNC_VERSION = 'raptorlens_live_sync_2026_11_12_v4';
           if (localStorage.getItem('raptorlens_build_version') !== BUILD_SYNC_VERSION) {
             localStorage.setItem('raptorlens_build_version', BUILD_SYNC_VERSION);
-            localStorage.setItem('raptorlens_station_primary_id', 'jDkhKX5-i_g');
-            localStorage.setItem('raptorlens_custom_cam', 'jDkhKX5-i_g');
+            localStorage.setItem('raptorlens_station_primary_id', 'CwxJ1aXfVJs');
+            localStorage.setItem('raptorlens_custom_cam', 'CwxJ1aXfVJs');
             localStorage.setItem('raptorlens_stream_mode', 'video');
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then(function (regs) {
