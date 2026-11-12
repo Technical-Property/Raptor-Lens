@@ -740,9 +740,37 @@ export default function App() {
     showToast(`✓ Authenticated: ${profile.callsign} (${profile.rank})`);
   };
 
-  const handleLoginCustomCallsign = (callsign: string, homeHotspot?: string) => {
-    setCurrentCallsign(callsign);
-    showToast(`✓ Field Callsign locked: ${callsign}`);
+  const handleLoginCustomCallsign = (callsign: string, homeHotspot?: string, passcode?: string) => {
+    const normalized = callsign.trim().toUpperCase();
+    setCurrentCallsign(normalized);
+    if (normalized && normalized !== 'GUEST-SCOUT') {
+      const existing = observers.find((o) => o.callsign.toUpperCase() === normalized);
+      if (!existing) {
+        const autoProfile: ObserverProfile = {
+          id: `obs-${Date.now()}`,
+          callsign: normalized,
+          fullName: normalized,
+          passcode: passcode || undefined,
+          badge: 'Barbury Regular',
+          experienceLevel: 'Intermediate Field Spotter',
+          yearsExperience: 1,
+          affiliation: 'Independent Wessex Scout',
+          specialties: ['Live Webcam Monitoring & Dispatches', 'Flight Silhouette Identification'],
+          homeHotspot: homeHotspot || 'Barbury Castle Country Park',
+          hotspotId: 'barbury-castle',
+          sightingsCount: 0,
+          verified: true,
+          isHumanVerified: true,
+          opticsGear: 'Binoculars 8x42',
+          bio: 'Active Wessex Downs raptor observer.',
+          joinedDate: 'Active Member',
+          avatarColor: 'from-amber-600 to-amber-800',
+        };
+        setObservers((prev) => [autoProfile, ...prev]);
+        saveObserverToFirestore(autoProfile);
+      }
+    }
+    showToast(`✓ Signed in & registered callsign: ${normalized}`);
   };
 
   const handleLogoutToGuest = () => {
@@ -1681,8 +1709,8 @@ export default function App() {
             handleLoginObserver(profile);
             setIsLoginModalOpen(false);
           }}
-          onLoginCustomCallsign={(callsign, homeHotspot) => {
-            handleLoginCustomCallsign(callsign, homeHotspot);
+          onLoginCustomCallsign={(callsign, homeHotspot, passcode) => {
+            handleLoginCustomCallsign(callsign, homeHotspot, passcode);
             setIsLoginModalOpen(false);
           }}
           onResetObserverPassword={(updatedProfile) => {

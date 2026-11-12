@@ -69,7 +69,6 @@ export function isFakeSighting(s: SightingLog): boolean {
 export function isFakeObserver(o: ObserverProfile): boolean {
   if (!o || !o.id) return true;
   if (FAKE_OBSERVER_IDS.has(o.id) || o.id.startsWith('sim-obs-')) return true;
-  if (o.callsign && FAKE_CALLSIGNS.has(o.callsign.toUpperCase())) return true;
   if (o.joinedDate && o.joinedDate.includes('Simulated')) return true;
   return false;
 }

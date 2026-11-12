@@ -22,7 +22,7 @@ interface LoginModalProps {
   observers: ObserverProfile[];
   currentCallsign: string;
   onSelectObserver: (profile: ObserverProfile) => void;
-  onLoginCustomCallsign: (callsign: string, homeHotspot?: string) => void;
+  onLoginCustomCallsign: (callsign: string, homeHotspot?: string, passcode?: string) => void;
   onResetObserverPassword?: (updatedProfile: ObserverProfile) => void;
   onLogoutToGuest: () => void;
   onOpenRegistration: () => void;
@@ -113,7 +113,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     // If new callsign entered with passcode
     tacticalAudio.playConfirmChime();
-    onLoginCustomCallsign(cleanInput.toUpperCase(), 'Barbury Castle Country Park');
+    onLoginCustomCallsign(cleanInput.toUpperCase(), 'Barbury Castle Country Park', passcodeInput.trim() || undefined);
     onClose();
   };
 
@@ -334,6 +334,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               Select your registered observer profile to sign in and stamp all field sightings with your verified credentials:
             </p>
 
+            {observers.length === 0 ? (
+              <div className="bg-neutral-900/70 border border-neutral-800 rounded-xl p-5 text-center space-y-3">
+                <UserPlus className="w-8 h-8 text-amber-400 mx-auto" />
+                <div className="space-y-1">
+                  <div className="font-display-tactical text-sm font-bold text-neutral-100">
+                    Welcome to the Wessex Observer Portal
+                  </div>
+                  <p className="text-[11px] text-neutral-300 font-sans leading-relaxed">
+                    Anyone can register an observer profile for free — whether you watch our live webcam from home, walk the Ridgeway, or log raptors in the field.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      tacticalAudio.playRadarPing(880);
+                      onClose();
+                      onOpenRegistration();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" /> Register New Observer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('custom')}
+                    className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold cursor-pointer"
+                  >
+                    Quick Callsign Sign In
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
               {observers.map((obs) => {
                 const isActive = obs.callsign === currentCallsign;
@@ -395,6 +428,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 

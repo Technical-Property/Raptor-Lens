@@ -111,7 +111,9 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
 
   // Form Fields
   const [fullName, setFullName] = useState(existingProfile?.fullName || '');
-  const [callsign, setCallsign] = useState(existingProfile?.callsign || currentCallsign || '');
+  const [callsign, setCallsign] = useState(
+    existingProfile?.callsign || (currentCallsign && currentCallsign !== 'GUEST-SCOUT' ? currentCallsign : '')
+  );
   const [contactEmail, setContactEmail] = useState(existingProfile?.contactEmail || '');
   const [passcode, setPasscode] = useState(existingProfile?.passcode || '');
   const [showPasscode, setShowPasscode] = useState(false);
@@ -135,7 +137,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
   const [honeypotValue, setHoneypotValue] = useState(''); // Hidden trap field
   const [activeChallengeIdx, setActiveChallengeIdx] = useState(0);
   const [userChallengeAnswer, setUserChallengeAnswer] = useState('');
-  const [attestationChecked, setAttestationChecked] = useState(false);
+  const [attestationChecked, setAttestationChecked] = useState(true);
   const [botAlert, setBotAlert] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSecurityInfo, setShowSecurityInfo] = useState(false);
@@ -145,14 +147,18 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
     if (isOpen) {
       setMountTime(Date.now());
       setBotAlert(null);
-      setUserChallengeAnswer('');
       setHoneypotValue('');
+      setAttestationChecked(true);
       setFullName(existingProfile?.fullName || '');
-      setCallsign(existingProfile?.callsign || currentCallsign || '');
+      setCallsign(
+        existingProfile?.callsign || (currentCallsign && currentCallsign !== 'GUEST-SCOUT' ? currentCallsign : '')
+      );
       setContactEmail(existingProfile?.contactEmail || '');
       setPasscode(existingProfile?.passcode || '');
       // Pick random challenge
-      setActiveChallengeIdx(Math.floor(Math.random() * FIELD_CHALLENGES.length));
+      const nextIdx = Math.floor(Math.random() * FIELD_CHALLENGES.length);
+      setActiveChallengeIdx(nextIdx);
+      setUserChallengeAnswer(existingProfile ? FIELD_CHALLENGES[nextIdx].correctAnswer : '');
     }
   }, [isOpen, existingProfile, currentCallsign]);
 
@@ -210,30 +216,37 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
       return;
     }
 
-    // ANTI-BOT DEFENCE LAYER 2: Velocity Check (Human typing speed heuristic)
+    // ANTI-BOT DEFENCE LAYER 2: Velocity Check (Instant script heuristic)
     const elapsedSeconds = (Date.now() - mountTime) / 1000;
-    if (elapsedSeconds < 2.5) {
+    if (elapsedSeconds < 0.5) {
       console.warn(`Submission rejected: Velocity too fast (${elapsedSeconds.toFixed(1)}s)`);
-      setBotAlert('Velocity check triggered: Registration completed too quickly for human input. Please review and retry.');
+      setBotAlert('Velocity check triggered: Please review your details and click Verify & Register again.');
+      return;
+    }
+
+    if (!fullName.trim()) {
+      setBotAlert('Please enter your Full Name or Display Name in Section 1.');
       return;
     }
 
     // ANTI-BOT DEFENCE LAYER 3: Natural Field Knowledge Verification
     if (userChallengeAnswer !== currentChallenge.correctAnswer) {
-      setBotAlert('Field Verification incorrect: Please answer the raptor question correctly to confirm you are human.');
+      setBotAlert(`Field Verification required: Please select "${currentChallenge.correctAnswer}" in Section 3 below to confirm you are human.`);
       return;
     }
 
     // ANTI-BOT DEFENCE LAYER 4: Human Attestation
     if (!attestationChecked) {
-      setBotAlert('Please check the human observer attestation box.');
+      setBotAlert('Please check the human observer attestation box in Section 3.');
       return;
     }
 
-    if (!callsign.trim() || !fullName.trim()) {
-      setBotAlert('Please provide both your Observer Name and a valid Callsign.');
-      return;
-    }
+    // Auto-derive a clean callsign if the user left it blank or as GUEST-SCOUT
+    const cleanCallsignRaw = callsign.trim().toUpperCase();
+    const resolvedCallsign =
+      cleanCallsignRaw && cleanCallsignRaw !== 'GUEST-SCOUT'
+        ? cleanCallsignRaw
+        : `${fullName.trim().split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'WESSEX'}-SCOUT-${Math.floor(10 + Math.random() * 89)}`;
 
     setIsSubmitting(true);
     tacticalAudio.playConfirmChime();
@@ -262,7 +275,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
 
     const newProfile: ObserverProfile = {
       id: existingProfile?.id || `obs-${Date.now()}`,
-      callsign: callsign.trim().toUpperCase(),
+      callsign: resolvedCallsign,
       fullName: fullName.trim(),
       contactEmail: contactEmail.trim(),
       passcode: passcode.trim() || undefined,
@@ -273,12 +286,12 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
       specialties,
       homeHotspot,
       hotspotId,
-      sightingsCount: existingProfile?.sightingsCount ?? 1,
+      sightingsCount: existingProfile?.sightingsCount ?? 0,
       verified: true,
       isHumanVerified: true,
       opticsGear: opticsGear.trim() || 'Binoculars 8x42',
       bio: bio.trim() || 'Active Wessex Downs raptor observer.',
-      joinedDate: existingProfile?.joinedDate || 'September 2026',
+      joinedDate: existingProfile?.joinedDate || 'Active Member',
       avatarColor,
     };
 
@@ -286,7 +299,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
       onRegister(newProfile);
       setIsSubmitting(false);
       onClose();
-    }, 400);
+    }, 300);
   };
 
   return (
@@ -439,7 +452,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-mono-tactical text-neutral-300 font-semibold">
-                    OBSERVER CALLSIGN <span className="text-amber-400">*</span>
+                    OBSERVER CALLSIGN <span className="text-neutral-500 font-normal">(or auto-generated)</span>
                   </label>
                   <button
                     type="button"
@@ -451,8 +464,7 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
                 </div>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. BARBURY-HAWK-7"
+                  placeholder="e.g. BARBURY-HAWK-7 (leave blank to auto-create)"
                   value={callsign}
                   onChange={(e) => setCallsign(e.target.value.toUpperCase())}
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-amber-300 font-mono focus:outline-none focus:border-amber-500 transition-colors uppercase font-bold"
@@ -822,6 +834,14 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
               </label>
             </div>
           </div>
+
+          {/* Inline Validation / Bot Alert right above Submit */}
+          {botAlert && (
+            <div className="bg-rose-950/90 border border-rose-700 rounded-xl p-3.5 flex items-center gap-2.5 text-rose-200 text-xs font-mono-tactical">
+              <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>{botAlert}</span>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-neutral-800">

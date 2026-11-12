@@ -226,7 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* Observer Identity Authentication / Login Button */}
+          {/* Observer Identity Authentication / Login & Register Buttons */}
           {onOpenLogin && (
             <button
               onClick={() => {
@@ -234,10 +234,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onOpenLogin();
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 text-neutral-300 hover:text-amber-300 cursor-pointer transition-colors text-xs"
-              title="Observer Profile"
+              title="Sign In to Observer Profile"
             >
               <LogIn className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-semibold">{currentCallsign}</span>
+              <span className="font-semibold">
+                {currentCallsign === 'GUEST-SCOUT' ? 'Sign In' : currentCallsign}
+              </span>
+            </button>
+          )}
+          {currentCallsign === 'GUEST-SCOUT' && (
+            <button
+              onClick={() => {
+                tacticalAudio.playRadarPing(900);
+                onOpenRegister();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 hover:text-amber-200 cursor-pointer transition-colors text-xs font-bold"
+              title="Register as a Community Observer (Free)"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-400" />
+              <span>Join / Register</span>
             </button>
           )}
         </div>
@@ -415,7 +430,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </select>
           </div>
 
-          {/* Callsign Account */}
+          {/* Callsign Account & Sign Up */}
           {onOpenLogin && (
             <button
               onClick={() => {
@@ -425,7 +440,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 shrink-0 cursor-pointer"
             >
               <LogIn className="w-3 h-3 text-amber-400" />
-              <span className="font-bold">{currentCallsign}</span>
+              <span className="font-bold">
+                {currentCallsign === 'GUEST-SCOUT' ? 'Sign In' : currentCallsign}
+              </span>
+            </button>
+          )}
+          {currentCallsign === 'GUEST-SCOUT' && (
+            <button
+              onClick={() => {
+                tacticalAudio.playRadarPing(900);
+                onOpenRegister();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 font-bold shrink-0 cursor-pointer"
+            >
+              <Users className="w-3 h-3 text-amber-400" />
+              <span>Join / Register</span>
             </button>
           )}
 

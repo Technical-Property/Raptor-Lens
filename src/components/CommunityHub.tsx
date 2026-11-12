@@ -98,14 +98,14 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
 
   const handleCreateWatchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWatchTitle.trim() || !newWatchDate.trim()) return;
+    if (!newWatchTitle.trim()) return;
 
     tacticalAudio.playConfirmChime();
     const newWatch: GroupSkywatch = {
       id: `watch-${Date.now()}`,
       title: newWatchTitle,
-      date: newWatchDate,
-      time: newWatchTime || '10:00 - 13:00 BST',
+      date: newWatchDate.trim() || 'Recurring / Open Meetup',
+      time: newWatchTime || '10:00 AM - 1:00 PM',
       hotspotId: newWatchHotspotId,
       locationName: newWatchLocation,
       gridRef: 'SU 149 763',
@@ -121,6 +121,7 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
     onCreateSkywatch(newWatch);
     setShowNewWatchModal(false);
     setNewWatchTitle('');
+    setNewWatchDate('');
     setNewWatchDesc('');
   };
 
@@ -332,17 +333,55 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
             </div>
             <div className="text-left sm:text-right shrink-0">
               <span className="text-[11px] font-mono-tactical text-amber-400 font-semibold block">
-                Next: Sunday, 1 Nov 2026 (10:00 AM)
+                10:00 AM – 1:00 PM • Open Meetup
               </span>
               <span className="text-[10px] text-neutral-400 font-sans">
-                Barbury Castle Main Ramparts
+                Barbury Castle Main Ramparts (SU 149 763)
               </span>
             </div>
           </div>
 
+          {skywatches.length === 0 && (
+            <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-6 text-center space-y-3">
+              <Calendar className="w-8 h-8 text-amber-400 mx-auto" />
+              <div className="space-y-1 max-w-lg mx-auto">
+                <h3 className="font-display-tactical text-base font-bold text-neutral-100">
+                  Open Ridgeway Skywatches &amp; Community Walks
+                </h3>
+                <p className="text-xs text-neutral-300 font-sans leading-relaxed">
+                  Our main group meets on the <strong>1st Sunday of every month at 10:00 AM</strong> at Barbury Castle Main Ramparts. Want to organise an informal walk at Hackpen Hill, Avebury, or Fyfield Down? Propose a meetup below!
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                <button
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(880);
+                    setShowNewWatchModal(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
+                >
+                  <Plus className="w-4 h-4" /> Propose Group Skywatch
+                </button>
+                {!currentUserProfile && (
+                  <button
+                    onClick={() => {
+                      tacticalAudio.playRadarPing(880);
+                      setShowRegistrationModal(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-amber-300 border border-amber-500/40 font-mono-tactical text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <UserCheck className="w-4 h-4 text-amber-400" /> Register Observer Profile
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {skywatches.map((watch) => {
               const isJoined = watch.attendees.includes(currentCallsign) || watch.isJoined;
+              const hasHistoricDate = watch.date && /\b(202[0-6]|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b/i.test(watch.date);
+              const scheduleLabel = !watch.date || hasHistoricDate ? 'Recurring / Open Meetup' : watch.date;
 
               return (
                 <div
@@ -353,7 +392,7 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono-tactical font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          {watch.date}
+                          {scheduleLabel}
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono-tactical bg-neutral-800 text-neutral-300">
                           {watch.difficulty}
@@ -627,6 +666,29 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
                 </div>
               </div>
             ))}
+
+            {filteredDiscussions.length === 0 && (
+              <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-6 text-center space-y-3">
+                <MessageSquare className="w-8 h-8 text-amber-400 mx-auto" />
+                <div className="space-y-1 max-w-md mx-auto">
+                  <h3 className="font-display-tactical text-base font-bold text-neutral-100">
+                    Start a Field Discussion or Ask an ID Question
+                  </h3>
+                  <p className="text-xs text-neutral-300 font-sans leading-relaxed">
+                    Spotted a distant raptor silhouette over the Ridgeway or looking for binocular recommendations? Post a question to the Wessex observer collective.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(880);
+                    setShowNewDiscModal(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-display-tactical text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
+                >
+                  <Plus className="w-4 h-4" /> Start New Discussion
+                </button>
+              </div>
+            )}
           </div>
 
           {/* End of Discussions Status Badge */}
@@ -829,7 +891,9 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
                   </div>
 
                   <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between text-xs font-mono-tactical text-neutral-400">
-                    <span>Joined: {obs.joinedDate}</span>
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Verified Member
+                    </span>
                     <span className="text-amber-400 font-semibold">{obs.sightingsCount} Contacts Logged</span>
                   </div>
                 </div>
@@ -838,17 +902,37 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
           </div>
 
           {filteredObservers.length === 0 && (
-            <div className="text-center py-12 bg-neutral-950/60 border border-neutral-800 rounded-2xl p-6">
-              <Eye className="w-8 h-8 text-neutral-600 mx-auto mb-2" />
-              <p className="text-sm font-mono-tactical text-neutral-400">
-                No observers registered under this experience filter yet.
-              </p>
-              <button
-                onClick={() => setExperienceFilter('ALL')}
-                className="mt-3 px-4 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-amber-400 text-xs font-mono-tactical cursor-pointer"
-              >
-                Reset Filter
-              </button>
+            <div className="text-center py-10 bg-neutral-950/60 border border-neutral-800 rounded-2xl p-6 space-y-3">
+              <Users className="w-8 h-8 text-amber-400 mx-auto" />
+              <div className="space-y-1 max-w-md mx-auto">
+                <p className="text-sm font-display-tactical font-bold text-neutral-100">
+                  {experienceFilter === 'ALL'
+                    ? 'Join the Wessex Observer Roster'
+                    : 'No observers registered under this experience filter yet.'}
+                </p>
+                <p className="text-xs text-neutral-300 font-sans">
+                  Anyone can sign up for free — whether you watch the live summit camera from home, walk the Ridgeway, or spot raptors in the field.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={() => {
+                    tacticalAudio.playRadarPing(880);
+                    setShowRegistrationModal(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-display-tactical font-bold cursor-pointer flex items-center gap-1.5 shadow-md shadow-amber-500/20"
+                >
+                  <UserCheck className="w-4 h-4" /> Register Experience &amp; Join
+                </button>
+                {experienceFilter !== 'ALL' && (
+                  <button
+                    onClick={() => setExperienceFilter('ALL')}
+                    className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-amber-400 text-xs font-mono-tactical cursor-pointer"
+                  >
+                    Reset Filter
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -896,21 +980,20 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-neutral-400 block mb-1 font-bold">DATE</label>
+                  <label className="text-neutral-400 block mb-1 font-bold">SCHEDULE / FREQUENCY (OPTIONAL)</label>
                   <input
                     type="text"
-                    placeholder="e.g. Saturday, 19 Sept"
+                    placeholder="e.g. 1st Sunday Monthly or Weekend Morning"
                     value={newWatchDate}
                     onChange={(e) => setNewWatchDate(e.target.value)}
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-neutral-100 focus:outline-none focus:border-amber-500"
-                    required
                   />
                 </div>
                 <div>
                   <label className="text-neutral-400 block mb-1 font-bold">TIME WINDOW</label>
                   <input
                     type="text"
-                    placeholder="e.g. 09:30 - 12:30 BST"
+                    placeholder="e.g. 10:00 AM - 1:00 PM"
                     value={newWatchTime}
                     onChange={(e) => setNewWatchTime(e.target.value)}
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-neutral-100 focus:outline-none focus:border-amber-500"
