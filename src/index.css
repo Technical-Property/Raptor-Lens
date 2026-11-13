@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-neutral-750: #2e2e2e;
+  --color-neutral-850: #1f1f1f;
+  --color-neutral-925: #121212;
+  --breakpoint-xs: 30rem;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

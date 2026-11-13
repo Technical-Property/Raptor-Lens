@@ -157,9 +157,14 @@ export const SightingModal: React.FC<SightingModalProps> = ({
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const dateStr = now.toISOString().split('T')[0];
 
-    const isSpecialistObserver = currentObserverProfile?.isSpecialist || 
-      currentObserverProfile?.rank?.includes('Specialist') || 
-      currentObserverProfile?.rank?.includes('Ringer');
+    const isSpecialistObserver = Boolean(
+      currentObserverProfile?.isSpecialist ||
+      currentObserverProfile?.rank?.includes('Specialist') ||
+      currentObserverProfile?.rank?.includes('Ringer') ||
+      currentObserverProfile?.badge?.includes('Specialist') ||
+      currentObserverProfile?.experienceLevel?.includes('Specialist') ||
+      currentObserverProfile?.experienceLevel?.includes('Ringer')
+    );
 
     const verificationStatus: VerificationStatus = isSpecialistObserver
       ? 'Specialist Confirmed'
@@ -191,7 +196,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
       altitudeM,
       opticalGear,
       observerCallsign: observerCallsign || 'SKY-SCOUT',
-      observerRank: currentObserverProfile?.rank || 'Field Scout',
+      observerRank: currentObserverProfile?.rank || currentObserverProfile?.badge || 'Field Scout',
       observerAffiliation: currentObserverProfile?.affiliation || 'Wessex Raptor Network',
       verificationStatus,
       rarityAlert: isRare,
@@ -207,7 +212,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
           action: 'INITIAL_LOG',
           timestamp: now.toISOString(),
           actorCallsign: observerCallsign || 'SKY-SCOUT',
-          actorRank: currentObserverProfile?.rank || 'Field Scout',
+          actorRank: currentObserverProfile?.rank || currentObserverProfile?.badge || 'Field Scout',
           details: `Field observation logged (${count}x ${selectedSpecies.commonName}, ${behavior}) with ${opticalGear}. Confidence: ${confidence}. Sector: ${sectorId}.${privacyEvaluation.fuzzed ? ` [Schedule 1: Coordinates masked to ~${privacyEvaluation.fuzzRadiusKm}km hectad]` : ''}`,
         },
       ],
@@ -313,7 +318,7 @@ export const SightingModal: React.FC<SightingModalProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded flex items-center gap-1 font-bold">
                     <ShieldCheck className="w-3 h-3" />
-                    {currentObserverProfile?.isSpecialist ? 'Specialist Verified Tier' : 'Verified Observer'}
+                    {(currentObserverProfile?.isSpecialist || currentObserverProfile?.badge === 'Raptor Specialist' || currentObserverProfile?.experienceLevel === 'Raptor Specialist / BTO Ringer') ? 'Specialist Verified Tier' : 'Verified Observer'}
                   </span>
                 </div>
               </div>

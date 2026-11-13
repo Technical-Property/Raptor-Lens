@@ -2,6 +2,7 @@ import React from 'react';
 import { Hotspot, SightingLog } from '../types/raptor';
 import { X, Compass, Eye, Car, ShieldAlert, Sparkles, Satellite, ExternalLink, Video } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
+import { getUkTimeZoneLabel } from '../utils/recency';
 
 interface HotspotDetailModalProps {
   hotspot: Hotspot | null;
@@ -236,7 +237,7 @@ export const HotspotDetailModal: React.FC<HotspotDetailModalProps> = ({
                     <span className="text-neutral-200 font-bold">
                       {sgt.speciesName} ({sgt.count}x) • <span className="text-amber-400">{sgt.behavior}</span>
                     </span>
-                    <span className="text-neutral-500">{sgt.time} BST</span>
+                    <span className="text-neutral-500">{sgt.time} {getUkTimeZoneLabel(sgt.timestamp)}</span>
                   </div>
                 ))}
               </div>

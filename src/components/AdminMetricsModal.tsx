@@ -1496,11 +1496,14 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                       <div className="space-y-2">
                         {betaFeedbacks.map((fb) => (
                           <div key={fb.id} className="p-3 rounded-lg bg-neutral-950 border border-neutral-850 space-y-1.5 text-xs font-mono-tactical">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-amber-300">{fb.authorCallsign}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-amber-300">{fb.observerCallsign}</span>
                               <span className="text-neutral-500 text-[10px]">{fb.timestamp}</span>
                             </div>
-                            <div className="text-neutral-300 font-sans">{fb.feedbackText}</div>
+                            {fb.title && (
+                              <div className="font-bold text-neutral-100 font-sans">{fb.title}</div>
+                            )}
+                            <div className="text-neutral-300 font-sans">{fb.details}</div>
                             <div className="flex items-center gap-2 text-[10px] text-neutral-500">
                               <span>Sector: {fb.sectorName}</span>
                               <span>•</span>

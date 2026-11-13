@@ -44,11 +44,16 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setTopic(defaultTopic);
+      setIsSubmitted(false);
       setMountTime(Date.now());
       setErrorMessage(null);
       setHoneypot('');
+      if (currentCallsign && currentCallsign !== 'FIELD-SCOUT' && currentCallsign !== 'GUEST-SCOUT') {
+        setCallsign((prev) => prev || currentCallsign);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, defaultTopic, currentCallsign]);
 
   if (!isOpen) return null;
 
@@ -74,8 +79,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
     setIsSending(false);
 
-    if (!res.ok && res.message.includes('Please wait')) {
-      setErrorMessage(res.message);
+    if (!res.ok) {
+      setErrorMessage(res.message || 'Unable to transmit liaison message right now. Please try again.');
       tacticalAudio.playRadarPing(600);
       return;
     }

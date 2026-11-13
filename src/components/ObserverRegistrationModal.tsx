@@ -273,13 +273,17 @@ export const ObserverRegistrationModal: React.FC<ObserverRegistrationModalProps>
     ];
     const avatarColor = existingProfile?.avatarColor || avatarGradients[Math.floor(Math.random() * avatarGradients.length)];
 
+    const derivedBadge = deriveBadge(experienceLevel);
+
     const newProfile: ObserverProfile = {
       id: existingProfile?.id || `obs-${Date.now()}`,
       callsign: resolvedCallsign,
       fullName: fullName.trim(),
       contactEmail: contactEmail.trim(),
       passcode: passcode.trim() || undefined,
-      badge: deriveBadge(experienceLevel),
+      badge: derivedBadge,
+      rank: derivedBadge,
+      isSpecialist: experienceLevel === 'Raptor Specialist / BTO Ringer',
       experienceLevel,
       yearsExperience: Number(yearsExperience) || 1,
       affiliation: affiliation.trim(),

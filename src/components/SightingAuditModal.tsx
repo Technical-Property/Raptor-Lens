@@ -22,6 +22,7 @@ import {
   Lock
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
+import { getUkTimeZoneLabel } from '../utils/recency';
 
 interface SightingAuditModalProps {
   isOpen: boolean;
@@ -153,7 +154,7 @@ export const SightingAuditModal: React.FC<SightingAuditModalProps> = ({
               </span>
               <span>•</span>
               <span className="flex items-center gap-1 text-neutral-300">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" /> {sighting.time} BST ({sighting.date})
+                <Clock className="w-3.5 h-3.5 text-cyan-400" /> {sighting.time} {getUkTimeZoneLabel(sighting.timestamp)} ({sighting.date})
               </span>
             </div>
           </div>
@@ -191,7 +192,7 @@ export const SightingAuditModal: React.FC<SightingAuditModalProps> = ({
                   <span className="font-bold uppercase tracking-wider text-purple-300 block">
                     Schedule 1 Wildlife Protection Protocol (Active)
                   </span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] bg-purple-900 border border-purple-400/50 text-purple-200">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-900 border border-purple-400/50 text-purple-200">
                     ~{sighting.privacyRadiusKm || 10}km Obfuscation
                   </span>
                 </div>

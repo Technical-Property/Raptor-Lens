@@ -21,8 +21,8 @@ interface LoginModalProps {
   onClose: () => void;
   observers: ObserverProfile[];
   currentCallsign: string;
-  onSelectObserver: (profile: ObserverProfile) => void;
-  onLoginCustomCallsign: (callsign: string, homeHotspot?: string, passcode?: string) => void;
+  onSelectObserver: (profile: ObserverProfile, rememberSession?: boolean) => void;
+  onLoginCustomCallsign: (callsign: string, homeHotspot?: string, passcode?: string, rememberSession?: boolean) => void;
   onResetObserverPassword?: (updatedProfile: ObserverProfile) => void;
   onLogoutToGuest: () => void;
   onOpenRegistration: () => void;
@@ -106,14 +106,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       tacticalAudio.playConfirmChime();
-      onSelectObserver(existing);
+      onSelectObserver(existing, rememberMe);
       onClose();
       return;
     }
 
     // If new callsign entered with passcode
     tacticalAudio.playConfirmChime();
-    onLoginCustomCallsign(cleanInput.toUpperCase(), 'Barbury Castle Country Park', passcodeInput.trim() || undefined);
+    onLoginCustomCallsign(cleanInput.toUpperCase(), 'Barbury Castle Country Park', passcodeInput.trim() || undefined, rememberMe);
     onClose();
   };
 
@@ -179,7 +179,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     setSuccessMsg(`Password updated for ${updatedProfile.callsign}! Signing you in...`);
     setTimeout(() => {
-      onSelectObserver(updatedProfile);
+      onSelectObserver(updatedProfile, rememberMe);
       onClose();
     }, 900);
   };
@@ -194,7 +194,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
     tacticalAudio.playConfirmChime();
-    onSelectObserver(obs);
+    onSelectObserver(obs, rememberMe);
     onClose();
   };
 
@@ -388,17 +388,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-neutral-100">{obs.callsign}</span>
                           {obs.isHumanVerified && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/40">
+                            <span className="flex items-center gap-0.5 text-[9px] text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/40">
                               <ShieldCheck className="w-2.5 h-2.5" /> Verified
                             </span>
                           )}
                           {obs.passcode && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-amber-300 bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-500/30">
+                            <span className="flex items-center gap-0.5 text-[9px] text-amber-300 bg-amber-950/70 px-1.5 py-0.5 rounded border border-amber-500/30">
                               <Lock className="w-2.5 h-2.5" /> PIN Protected
                             </span>
                           )}
                           {isActive && (
-                            <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/40">
+                            <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40">
                               Active
                             </span>
                           )}

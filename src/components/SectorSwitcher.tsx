@@ -80,7 +80,7 @@ export const SectorSwitcher: React.FC<SectorSwitcherProps> = ({
                 />
                 <span>{sec.shortName}</span>
                 {sec.id === 'ridgeway-wessex' && (
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 uppercase tracking-tighter">
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/30 text-amber-200 uppercase tracking-tighter">
                     CORE
                   </span>
                 )}

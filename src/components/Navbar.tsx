@@ -3,25 +3,16 @@ import {
   Crosshair, 
   Map, 
   Eye, 
-  Radio, 
   Plus, 
   Volume2, 
   VolumeX, 
-  Wind, 
   Compass, 
   Users, 
   Mountain, 
-  HelpCircle,
-  SunMedium,
-  Moon,
-  ShieldCheck,
   LogIn,
   Smartphone,
   Bug,
   Heart,
-  Scale,
-  Mail,
-  BarChart3,
   BookOpen
 } from 'lucide-react';
 import { tacticalAudio } from '../utils/audio';
@@ -87,45 +78,18 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenContact,
   onOpenAdminMetrics,
 }) => {
-  const [timeStr, setTimeStr] = useState<string>('');
-  const [isBreezeActive, setIsBreezeActive] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(() => tacticalAudio.isMuted);
-  const [showSceneryDropdown, setShowSceneryDropdown] = useState<boolean>(false);
 
   useEffect(() => {
     return tacticalAudio.subscribeMute((muted) => {
       setIsMuted(muted);
-      if (muted) setIsBreezeActive(false);
     });
   }, []);
 
   const handleToggleMute = () => {
     const nextMuted = tacticalAudio.toggleMuted();
     setIsMuted(nextMuted);
-    if (nextMuted) setIsBreezeActive(false);
-    else tacticalAudio.playRadarPing(880);
-  };
-
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTimeStr(
-        now.toLocaleTimeString('en-GB', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZone: 'Europe/London',
-        }) + ' BST'
-      );
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleToggleSound = () => {
-    const active = tacticalAudio.toggleDownlandBreeze();
-    setIsBreezeActive(active);
+    if (!nextMuted) tacticalAudio.playRadarPing(880);
   };
 
   const navItems: Array<{ id: NavTab; label: string; icon: React.ReactNode; badge?: string | number; isActive: boolean }> = [

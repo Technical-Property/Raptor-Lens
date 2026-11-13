@@ -46,8 +46,11 @@ import {
   subscribeToSightings, 
   saveSightingToFirestore,
   addCorroborationToFirestore,
+  updateSightingFlagInFirestore,
   subscribeToObservers,
   saveObserverToFirestore,
+  saveLocalObserverCredentials,
+  mergeLocalObserverCredentials,
   subscribeToSkywatches,
   saveSkywatchToFirestore,
   subscribeToDiscussions,
@@ -178,11 +181,25 @@ export default function App() {
     }
   });
 
-  // Current Observer identity
+  // Current Observer identity & session persistence preference
+  const [rememberSession, setRememberSession] = useState<boolean>(() => {
+    try {
+      const fromLocal = localStorage.getItem('raptorlens_callsign');
+      if (fromLocal && fromLocal !== 'GUEST-SCOUT') return true;
+      const fromSession = sessionStorage.getItem('raptorlens_callsign');
+      if (fromSession && fromSession !== 'GUEST-SCOUT') return false;
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
   const [currentCallsign, setCurrentCallsign] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem('raptorlens_callsign');
-      if (saved && saved !== 'WESSEX-SCOUT-07') return saved;
+      const savedLocal = localStorage.getItem('raptorlens_callsign');
+      if (savedLocal && savedLocal !== 'WESSEX-SCOUT-07') return savedLocal;
+      const savedSession = sessionStorage.getItem('raptorlens_callsign');
+      if (savedSession && savedSession !== 'WESSEX-SCOUT-07') return savedSession;
       return 'GUEST-SCOUT';
     } catch {
       return 'GUEST-SCOUT';
@@ -297,9 +314,9 @@ export default function App() {
         }));
       }, INITIAL_SIGHTINGS);
 
-      // Realtime listener for community observers
+      // Realtime listener for community observers (preserving locally stored credentials)
       unsubscribeObservers = subscribeToObservers((incoming) => {
-        setObservers(incoming);
+        setObservers(incoming.map(mergeLocalObserverCredentials));
       }, INITIAL_OBSERVERS);
 
       // Realtime listener for group skywatches
@@ -462,12 +479,18 @@ export default function App() {
     } catch {}
   }, [backgroundVisibility]);
 
-  // Persist callsign
+  // Persist callsign according to rememberSession preference
   useEffect(() => {
     try {
-      localStorage.setItem('raptorlens_callsign', currentCallsign);
+      if (currentCallsign === 'GUEST-SCOUT' || rememberSession) {
+        localStorage.setItem('raptorlens_callsign', currentCallsign);
+        sessionStorage.removeItem('raptorlens_callsign');
+      } else {
+        sessionStorage.setItem('raptorlens_callsign', currentCallsign);
+        localStorage.removeItem('raptorlens_callsign');
+      }
     } catch {}
-  }, [currentCallsign]);
+  }, [currentCallsign, rememberSession]);
 
   // Persist community data
   useEffect(() => {
@@ -561,6 +584,23 @@ export default function App() {
     };
 
     setSightings((prev) => [processedSighting, ...prev]);
+
+    // Increment observer's logged sightings count for field raptor logs
+    if (!newSighting.markerCategory || newSighting.markerCategory === 'raptor') {
+      setObservers((prev) =>
+        prev.map((o) => {
+          if (o.callsign.toUpperCase() === currentCallsign.toUpperCase()) {
+            const updatedObserver: ObserverProfile = {
+              ...o,
+              sightingsCount: (o.sightingsCount || 0) + 1,
+            };
+            saveObserverToFirestore(updatedObserver);
+            return updatedObserver;
+          }
+          return o;
+        })
+      );
+    }
 
     // Asynchronously save to Firestore database
     saveSightingToFirestore(processedSighting).catch((err) => {
@@ -716,6 +756,8 @@ export default function App() {
     const isExistingUpdate = observers.some(
       (o) => o.id === newProfile.id || o.callsign.toUpperCase() === newProfile.callsign.toUpperCase()
     );
+    saveLocalObserverCredentials(newProfile.callsign, newProfile.passcode, newProfile.contactEmail);
+    setRememberSession(true);
     setCurrentCallsign(newProfile.callsign);
     setObservers((prev) => {
       const idx = prev.findIndex((o) => o.id === newProfile.id || o.callsign === newProfile.callsign);
@@ -742,6 +784,7 @@ export default function App() {
   };
 
   const handleResetObserverPassword = (updatedProfile: ObserverProfile) => {
+    saveLocalObserverCredentials(updatedProfile.callsign, updatedProfile.passcode, updatedProfile.contactEmail);
     setCurrentCallsign(updatedProfile.callsign);
     setObservers((prev) => {
       const idx = prev.findIndex((o) => o.id === updatedProfile.id || o.callsign === updatedProfile.callsign);
@@ -761,7 +804,8 @@ export default function App() {
   };
 
   // Observer Authentication & Account Handlers
-  const handleLoginObserver = (profile: ObserverProfile) => {
+  const handleLoginObserver = (profile: ObserverProfile, remember = true) => {
+    setRememberSession(remember);
     setCurrentCallsign(profile.callsign);
     setObservers((prev) => {
       const exists = prev.some((o) => o.callsign === profile.callsign);
@@ -775,10 +819,14 @@ export default function App() {
     }
   };
 
-  const handleLoginCustomCallsign = (callsign: string, homeHotspot?: string, passcode?: string) => {
+  const handleLoginCustomCallsign = (callsign: string, homeHotspot?: string, passcode?: string, remember = true) => {
     const normalized = callsign.trim().toUpperCase();
+    setRememberSession(remember);
     setCurrentCallsign(normalized);
     if (normalized && normalized !== 'GUEST-SCOUT') {
+      if (passcode) {
+        saveLocalObserverCredentials(normalized, passcode, undefined);
+      }
       const existing = observers.find((o) => o.callsign.toUpperCase() === normalized);
       if (!existing) {
         const autoProfile: ObserverProfile = {
@@ -787,6 +835,7 @@ export default function App() {
           fullName: normalized,
           passcode: passcode || undefined,
           badge: 'Barbury Regular',
+          rank: 'Barbury Regular',
           experienceLevel: 'Intermediate Field Spotter',
           yearsExperience: 1,
           affiliation: 'Independent Wessex Scout',
@@ -813,6 +862,7 @@ export default function App() {
   };
 
   const handleLogoutToGuest = () => {
+    setRememberSession(true);
     setCurrentCallsign('GUEST-SCOUT');
     showToast('Signed out. Sign in with your callsign to log sightings.');
   };
@@ -825,7 +875,7 @@ export default function App() {
 
   const handleCorroborateSighting = (sightingId: string, notes?: string) => {
     const now = new Date();
-    const observerRank = currentObserverProfile?.rank || 'Field Scout';
+    const observerRank = currentObserverProfile?.rank || currentObserverProfile?.badge || 'Field Scout';
 
     setSightings((prev) =>
       prev.map((s) => {
@@ -848,7 +898,10 @@ export default function App() {
             currentObserverProfile?.isSpecialist ||
             observerRank.includes('Specialist') ||
             observerRank.includes('Ringer') ||
-            observerRank.includes('BTO')
+            observerRank.includes('BTO') ||
+            currentObserverProfile?.badge?.includes('Specialist') ||
+            currentObserverProfile?.experienceLevel?.includes('Specialist') ||
+            currentObserverProfile?.experienceLevel?.includes('Ringer')
           );
 
           let newStatus: VerificationStatus = s.verificationStatus || 'Pending Review';
@@ -858,15 +911,17 @@ export default function App() {
             newStatus = 'Corroborated by Peers';
           }
 
+          const newAuditEntry = {
+            action: isSpecialist ? ('SPECIALIST_VERIFIED' as const) : ('PEER_CORROBORATION' as const),
+            timestamp: now.toISOString(),
+            actorCallsign: currentCallsign,
+            actorRank: observerRank,
+            details: notes || `Observer visual corroboration recorded. Verification tier updated to ${newStatus}.`,
+          };
+
           const updatedAuditTrail = [
             ...(s.auditTrail || []),
-            {
-              action: isSpecialist ? ('SPECIALIST_VERIFIED' as const) : ('PEER_CORROBORATION' as const),
-              timestamp: now.toISOString(),
-              actorCallsign: currentCallsign,
-              actorRank: observerRank,
-              details: notes || `Observer visual corroboration recorded. Verification tier updated to ${newStatus}.`,
-            },
+            newAuditEntry,
           ];
 
           const updatedSighting: SightingLog = {
@@ -880,8 +935,8 @@ export default function App() {
             setAuditSighting(updatedSighting);
           }
 
-          // Persist corroboration update to Firestore
-          addCorroborationToFirestore(sightingId, newCorrob).catch((err) => {
+          // Persist corroboration, resolved verification status & audit event to Firestore
+          addCorroborationToFirestore(sightingId, newCorrob, newStatus, newAuditEntry).catch((err) => {
             console.warn('Could not sync corroboration to Firestore:', err);
           });
 
@@ -896,18 +951,20 @@ export default function App() {
 
   const handleFlagSighting = (sightingId: string, reason: string) => {
     const now = new Date();
+    const flagAuditEntry = {
+      action: 'FLAGGED' as const,
+      timestamp: now.toISOString(),
+      actorCallsign: currentCallsign,
+      actorRank: currentObserverProfile?.rank || currentObserverProfile?.badge || 'Field Scout',
+      details: `Flagged for verification audit: "${reason}"`,
+    };
+
     setSightings((prev) =>
       prev.map((s) => {
         if (s.id === sightingId) {
           const updatedAuditTrail = [
             ...(s.auditTrail || []),
-            {
-              action: 'FLAGGED' as const,
-              timestamp: now.toISOString(),
-              actorCallsign: currentCallsign,
-              actorRank: currentObserverProfile?.rank || 'Field Scout',
-              details: `Flagged for verification audit: "${reason}"`,
-            },
+            flagAuditEntry,
           ];
 
           const updated: SightingLog = {
@@ -919,6 +976,11 @@ export default function App() {
           if (auditSighting?.id === s.id) {
             setAuditSighting(updated);
           }
+
+          updateSightingFlagInFirestore(sightingId, flagAuditEntry).catch((err) => {
+            console.warn('Could not sync sighting flag to Firestore:', err);
+          });
+
           return updated;
         }
         return s;
@@ -1390,7 +1452,7 @@ export default function App() {
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     Field Sightings Log
-                    <span className={`px-1.5 py-0.2 rounded text-[10px] ${activeTab === 'sightings' ? 'bg-neutral-950 text-amber-300 font-bold' : 'bg-neutral-800 text-neutral-300'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${activeTab === 'sightings' ? 'bg-neutral-950 text-amber-300 font-bold' : 'bg-neutral-800 text-neutral-300'}`}>
                       {sightings.length}
                     </span>
                   </button>
@@ -1407,7 +1469,7 @@ export default function App() {
                   >
                     <Users className="w-3.5 h-3.5" />
                     Group Walks &amp; Skywatches
-                    <span className={`px-1.5 py-0.2 rounded text-[10px] ${activeTab === 'community' ? 'bg-neutral-950 text-amber-300 font-bold' : 'bg-neutral-800 text-neutral-300'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${activeTab === 'community' ? 'bg-neutral-950 text-amber-300 font-bold' : 'bg-neutral-800 text-neutral-300'}`}>
                       {skywatches.length} Walks
                     </span>
                   </button>
@@ -1738,12 +1800,12 @@ export default function App() {
           onClose={() => setIsLoginModalOpen(false)}
           observers={observers}
           currentCallsign={currentCallsign}
-          onSelectObserver={(profile) => {
-            handleLoginObserver(profile);
+          onSelectObserver={(profile, remember) => {
+            handleLoginObserver(profile, remember);
             setIsLoginModalOpen(false);
           }}
-          onLoginCustomCallsign={(callsign, homeHotspot, passcode) => {
-            handleLoginCustomCallsign(callsign, homeHotspot, passcode);
+          onLoginCustomCallsign={(callsign, homeHotspot, passcode, remember) => {
+            handleLoginCustomCallsign(callsign, homeHotspot, passcode, remember);
             setIsLoginModalOpen(false);
           }}
           onResetObserverPassword={(updatedProfile) => {

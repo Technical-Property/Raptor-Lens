@@ -23,6 +23,7 @@ import {
 import { SectorId } from '../types/sector';
 import { UK_SECTORS } from '../data/sectors';
 import { tacticalAudio } from '../utils/audio';
+import { getUkTimeZoneLabel } from '../utils/recency';
 
 interface MeteorologicalBriefingProps {
   activeSectorId: SectorId;
@@ -250,7 +251,7 @@ export const MeteorologicalBriefing: React.FC<MeteorologicalBriefingProps> = ({
       if (data.current) {
         const cur = data.current;
         const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} BST`;
+        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} ${getUkTimeZoneLabel(now)}`;
 
         setWeatherData((prev) => ({
           ...prev,

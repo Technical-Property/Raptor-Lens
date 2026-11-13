@@ -1700,7 +1700,7 @@ export const SummitTrailConditionsView: React.FC<SummitTrailConditionsViewProps>
                 <span className="font-bold text-neutral-100">
                   {isViewingPrimaryStation ? 'RaptorLens UK Station Broadcast' : POPULAR_CAMERA_PRESETS.find((p) => p.videoId === activeVideoId)?.channelName || currentCam.channelName}
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                   {isViewingPrimaryStation ? 'OFFICIAL STATION CAM' : 'PARTNER RAPTOR CAM'}
                 </span>
               </div>

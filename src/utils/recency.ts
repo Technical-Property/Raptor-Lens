@@ -22,6 +22,24 @@ export interface RecencyData {
 }
 
 /**
+ * Returns the active UK time zone abbreviation ('GMT' or 'BST') for a given date/timestamp.
+ */
+export function getUkTimeZoneLabel(dateInput?: string | Date): string {
+  try {
+    const date = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput) : dateInput) : new Date();
+    if (Number.isNaN(date.getTime())) return 'GMT/BST';
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      timeZoneName: 'short',
+    }).formatToParts(date);
+    const tzName = parts.find((p) => p.type === 'timeZoneName')?.value;
+    return tzName || 'GMT';
+  } catch {
+    return 'GMT';
+  }
+}
+
+/**
  * Calculates freshness / recency metrics and traffic-light signal for any sighting.
  * Thresholds aligned with wildlife alert networks (BirdGuides, Rare Bird Alert, BTO):
  * - GREEN (Live / Breaking): < 3 hours ago (active aloft or in thermal)

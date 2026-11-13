@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Scale, Volume2, Sparkles, Check, ExternalLink } from 'lucide-react';
+import { X, Scale, Volume2, Sparkles } from 'lucide-react';
 import { RaptorSpecies } from '../types/raptor';
 import { tacticalAudio } from '../utils/audio';
 
@@ -149,9 +149,6 @@ export const ConfusionSolverModal: React.FC<ConfusionSolverModalProps> = ({
   onLogSpecies,
 }) => {
   const [activePresetId, setActivePresetId] = useState<string>('buzzard-vs-redkite');
-  const [customSpeciesA, setCustomSpeciesA] = useState<string>('common-buzzard');
-  const [customSpeciesB, setCustomSpeciesB] = useState<string>('red-kite');
-  const [isCustomMode, setIsCustomMode] = useState<boolean>(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -165,17 +162,14 @@ export const ConfusionSolverModal: React.FC<ConfusionSolverModalProps> = ({
         document.body.style.overflow = prevOverflow;
       };
     }
-  }, [isOpen, activePresetId, isCustomMode]);
+  }, [isOpen, activePresetId]);
 
   if (!isOpen) return null;
 
   const activePreset = CONFUSION_PRESETS.find((p) => p.id === activePresetId) || CONFUSION_PRESETS[0];
 
-  const speciesAId = isCustomMode ? customSpeciesA : activePreset.speciesAId;
-  const speciesBId = isCustomMode ? customSpeciesB : activePreset.speciesBId;
-
-  const speciesA = speciesList.find((s) => s.id === speciesAId) || speciesList[0];
-  const speciesB = speciesList.find((s) => s.id === speciesBId) || speciesList[1];
+  const speciesA = speciesList.find((s) => s.id === activePreset.speciesAId) || speciesList[0];
+  const speciesB = speciesList.find((s) => s.id === activePreset.speciesBId) || speciesList[1];
 
   return (
     <div 
@@ -220,10 +214,9 @@ export const ConfusionSolverModal: React.FC<ConfusionSolverModalProps> = ({
                   onClick={() => {
                     tacticalAudio.playRadarPing(880);
                     setActivePresetId(preset.id);
-                    setIsCustomMode(false);
                   }}
                   className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
-                    !isCustomMode && activePresetId === preset.id
+                    activePresetId === preset.id
                       ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-md shadow-amber-500/10'
                       : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-850 hover:text-neutral-200'
                   }`}

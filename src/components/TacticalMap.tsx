@@ -33,6 +33,7 @@ import { evaluateCoordinatePrivacy } from '../utils/schedule1Privacy';
 import { 
   getSightingRecency, 
   getRecencyCounts, 
+  getUkTimeZoneLabel,
   RecencyWindow, 
   TRAFFIC_LIGHT_TIERS 
 } from '../utils/recency';
@@ -699,7 +700,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         shadowGlow = 'box-shadow: 0 0 10px #f59e0b;';
       } else if (recency.level === 'orange') {
         // PAST 48H: Subtle warmth
-        markerBorder = 'border-1.5 border-orange-200';
+        markerBorder = 'border-[1.5px] border-orange-200';
         shadowGlow = 'box-shadow: 0 0 6px #f97316;';
       } else {
         // ARCHIVED (> 48h): Clean muted slate disc, historical density
@@ -765,7 +766,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         schedule1PopupNotice +
         `<div class="flex items-center justify-between pt-0.5 text-[9px] font-mono-tactical border-t border-neutral-800">` +
         `<span style="color: ${statusColor}; font-weight: bold;">● ${sighting.verificationStatus || 'Pending Review'}</span>` +
-        `<span class="text-neutral-400">${sighting.time} BST | ${sighting.observerCallsign}</span>` +
+        `<span class="text-neutral-400">${sighting.time} ${getUkTimeZoneLabel(sighting.timestamp)} | ${sighting.observerCallsign}</span>` +
         `</div>` +
         `</div>`,
         {

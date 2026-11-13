@@ -739,7 +739,7 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
                   <h4 className="text-xs font-mono-tactical font-bold text-emerald-300 uppercase tracking-wider">
                     Community Anti-Bot Shield Active
                   </h4>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono-tactical bg-emerald-950 text-emerald-400 border border-emerald-500/40">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tactical bg-emerald-950 text-emerald-400 border border-emerald-500/40">
                     100% Human Verified
                   </span>
                 </div>
@@ -814,7 +814,7 @@ export const CommunityHub: React.FC<CommunityHubProps> = ({
                               {obs.callsign}
                             </h3>
                             {isCurrentUser && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono-tactical bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono-tactical bg-amber-500/20 text-amber-300 border border-amber-500/40">
                                 You
                               </span>
                             )}

@@ -1,53 +1,99 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Sighting logs: Anyone can read, authenticated observers or visitors can submit valid sightings
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() > 0 && val.size() <= maxLen;
+    }
+
+    // Default deny any unconfigured collections or subcollections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Sighting logs: Anyone can read, valid sightings can be created, only audit/verification fields can be updated
     match /sightings/{sightingId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'speciesName', 'locationName', 'observerCallsign', 'count', 'timestamp'])
-                    && request.resource.data.speciesName is string
+      allow create: if isValidId(sightingId)
+                    && request.resource.data.keys().hasAll(['id', 'speciesName', 'locationName', 'observerCallsign', 'count', 'timestamp'])
+                    && isNonEmptyString(request.resource.data.id, 128)
+                    && isNonEmptyString(request.resource.data.speciesName, 120)
+                    && isNonEmptyString(request.resource.data.locationName, 200)
+                    && isNonEmptyString(request.resource.data.observerCallsign, 64)
+                    && isNonEmptyString(request.resource.data.timestamp, 64)
                     && request.resource.data.count is number
-                    && request.resource.data.count > 0;
-      allow update: if true; // Allows adding peer corroborations and audit events
+                    && request.resource.data.count > 0
+                    && request.resource.data.count <= 500;
+      allow update: if isValidId(sightingId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['corroborations', 'verificationStatus', 'auditTrail']);
       allow delete: if false; // Sightings are permanent scientific/community records
     }
 
-    // Spotter reports on livecams
+    // Spotter reports & station camera live stream sync config
     match /spotterReports/{reportId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'camId', 'speciesName', 'callsign', 'count', 'timestamp'])
-                    && request.resource.data.speciesName is string
-                    && request.resource.data.count is number;
-      allow update: if true;
+      allow create, update: if isValidId(reportId)
+                            && request.resource.data.keys().hasAll(['id', 'camId', 'speciesName', 'callsign', 'count', 'timestamp'])
+                            && isNonEmptyString(request.resource.data.id, 128)
+                            && isNonEmptyString(request.resource.data.camId, 64)
+                            && isNonEmptyString(request.resource.data.speciesName, 120)
+                            && isNonEmptyString(request.resource.data.callsign, 64)
+                            && isNonEmptyString(request.resource.data.timestamp, 64)
+                            && request.resource.data.count is number
+                            && request.resource.data.count > 0
+                            && request.resource.data.count <= 500;
       allow delete: if false;
     }
 
     // Group skywatch meetups
     match /groupSkywatches/{skywatchId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'title', 'date', 'time', 'locationName', 'leaderCallsign']);
-      allow update: if true; // Allows users to join / RSVP
+      allow create: if isValidId(skywatchId)
+                    && request.resource.data.keys().hasAll(['id', 'title', 'date', 'time', 'locationName', 'leaderCallsign'])
+                    && isNonEmptyString(request.resource.data.id, 128)
+                    && isNonEmptyString(request.resource.data.title, 160)
+                    && isNonEmptyString(request.resource.data.locationName, 200)
+                    && isNonEmptyString(request.resource.data.leaderCallsign, 64);
+      allow update: if isValidId(skywatchId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendees', 'isJoined']);
       allow delete: if false;
     }
 
-    // Registered community observers
+    // Registered community observers (public profile fields only; private credentials stay local)
     match /observers/{observerId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'callsign', 'fullName', 'badge', 'homeHotspot'])
-                    && request.resource.data.callsign is string
-                    && request.resource.data.fullName is string;
-      allow update: if true; // Allows profile updates and password/PIN resets
+      allow create: if isValidId(observerId)
+                    && request.resource.data.keys().hasAll(['id', 'callsign', 'fullName', 'badge', 'homeHotspot'])
+                    && isNonEmptyString(request.resource.data.id, 128)
+                    && isNonEmptyString(request.resource.data.callsign, 64)
+                    && isNonEmptyString(request.resource.data.fullName, 120)
+                    && isNonEmptyString(request.resource.data.badge, 80)
+                    && isNonEmptyString(request.resource.data.homeHotspot, 160)
+                    && !('passcode' in request.resource.data)
+                    && !('contactEmail' in request.resource.data);
+      allow update: if isValidId(observerId)
+                    && isNonEmptyString(request.resource.data.callsign, 64)
+                    && isNonEmptyString(request.resource.data.fullName, 120)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['passcode', 'contactEmail']);
       allow delete: if false;
     }
 
     // Community field forum discussions
     match /discussions/{discussionId} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['id', 'title', 'authorCallsign', 'category', 'content'])
-                    && request.resource.data.title is string
-                    && request.resource.data.content is string;
-      allow update: if true; // Allows adding replies and upvotes
+      allow create: if isValidId(discussionId)
+                    && request.resource.data.keys().hasAll(['id', 'title', 'authorCallsign', 'category', 'content'])
+                    && isNonEmptyString(request.resource.data.id, 128)
+                    && isNonEmptyString(request.resource.data.title, 200)
+                    && isNonEmptyString(request.resource.data.authorCallsign, 64)
+                    && isNonEmptyString(request.resource.data.category, 64)
+                    && isNonEmptyString(request.resource.data.content, 4000);
+      allow update: if isValidId(discussionId)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replies', 'upvotes', 'hasUpvoted']);
       allow delete: if false;
     }
 

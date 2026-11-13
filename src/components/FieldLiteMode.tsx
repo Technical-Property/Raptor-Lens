@@ -144,7 +144,9 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
 
   const handleQuickSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    tacticalAudio.playConfirmChime();
+    if (currentCallsign && currentCallsign !== 'GUEST-SCOUT') {
+      tacticalAudio.playConfirmChime();
+    }
 
     const selectedSpecies = speciesList.find((s) => s.id === selectedSpeciesId);
     const now = new Date();
@@ -259,10 +261,10 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
                 <span className="font-display-tactical text-base font-bold text-neutral-100 tracking-wider">
                   RAPTORLENS
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50">
                   BETA
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                   LITE
                 </span>
               </div>
@@ -713,11 +715,11 @@ export const FieldLiteMode: React.FC<FieldLiteModeProps> = ({
                               <span className="font-display-tactical text-sm font-bold text-neutral-100">
                                 {s.speciesName}
                               </span>
-                              <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                                 {s.count}x
                               </span>
                               <span
-                                className="px-1.5 py-0.2 rounded text-[9px] font-bold flex items-center gap-1"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1"
                                 style={{
                                   backgroundColor: `${recency.colorHex}20`,
                                   color: recency.colorHex,

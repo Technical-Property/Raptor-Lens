@@ -10,7 +10,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SightingLog, CorroborationRecord } from '../types/raptor';
+import { SightingLog, CorroborationRecord, AuditEntry, VerificationStatus } from '../types/raptor';
 import { ObserverProfile, GroupSkywatch, CommunityDiscussion } from '../types/community';
 import { DEFAULT_CAMERA_VIDEO_ID, isStaleOrLegacyVideoId } from '../utils/youtube';
 
@@ -18,6 +18,52 @@ const SIGHTINGS_COLLECTION = 'sightings';
 const OBSERVERS_COLLECTION = 'observers';
 const SKYWATCHES_COLLECTION = 'groupSkywatches';
 const DISCUSSIONS_COLLECTION = 'discussions';
+const LOCAL_OBSERVER_CREDS_KEY = 'raptorlens_observer_creds_v1';
+
+interface LocalObserverCredentialRecord {
+  passcode?: string;
+  contactEmail?: string;
+}
+
+export function saveLocalObserverCredentials(
+  callsign: string,
+  passcode?: string,
+  contactEmail?: string
+): void {
+  try {
+    const key = callsign.trim().toUpperCase();
+    if (!key || key === 'GUEST-SCOUT') return;
+    const raw = localStorage.getItem(LOCAL_OBSERVER_CREDS_KEY);
+    const store: Record<string, LocalObserverCredentialRecord> = raw ? JSON.parse(raw) : {};
+    const existing = store[key] || {};
+    const nextPasscode = passcode !== undefined ? (passcode.trim() || undefined) : existing.passcode;
+    const nextEmail = contactEmail !== undefined ? (contactEmail.trim() || undefined) : existing.contactEmail;
+    store[key] = {
+      ...(nextPasscode ? { passcode: nextPasscode } : {}),
+      ...(nextEmail ? { contactEmail: nextEmail } : {}),
+    };
+    localStorage.setItem(LOCAL_OBSERVER_CREDS_KEY, JSON.stringify(store));
+  } catch {
+    // Ignore storage quota / privacy mode errors
+  }
+}
+
+export function mergeLocalObserverCredentials(profile: ObserverProfile): ObserverProfile {
+  try {
+    const raw = localStorage.getItem(LOCAL_OBSERVER_CREDS_KEY);
+    if (!raw) return profile;
+    const store: Record<string, LocalObserverCredentialRecord> = JSON.parse(raw);
+    const creds = store[profile.callsign.trim().toUpperCase()];
+    if (!creds) return profile;
+    return {
+      ...profile,
+      passcode: profile.passcode || creds.passcode,
+      contactEmail: profile.contactEmail || creds.contactEmail,
+    };
+  } catch {
+    return profile;
+  }
+}
 
 /**
  * Legacy seeded / fake IDs and callsigns to filter out so the app starts 100% fresh
@@ -138,20 +184,46 @@ export async function saveSightingToFirestore(sighting: SightingLog): Promise<vo
 }
 
 /**
- * Add peer corroboration to an existing sighting in Firestore
+ * Add peer corroboration and verification status/audit trail update to an existing sighting in Firestore
  */
 export async function addCorroborationToFirestore(
-  sightingId: string, 
-  corroboration: CorroborationRecord
+  sightingId: string,
+  corroboration: CorroborationRecord,
+  verificationStatus: VerificationStatus = 'Corroborated by Peers',
+  auditEntry?: AuditEntry
+): Promise<void> {
+  try {
+    const docRef = doc(db, SIGHTINGS_COLLECTION, sightingId);
+    const cleanCorrob = JSON.parse(JSON.stringify(corroboration));
+    const updates: Record<string, unknown> = {
+      corroborations: arrayUnion(cleanCorrob),
+      verificationStatus,
+    };
+    if (auditEntry) {
+      updates.auditTrail = arrayUnion(JSON.parse(JSON.stringify(auditEntry)));
+    }
+    await updateDoc(docRef, updates);
+  } catch (err) {
+    console.error('Error adding corroboration in Firestore:', err);
+    throw err;
+  }
+}
+
+/**
+ * Sync sighting flag status and audit entry to Firestore
+ */
+export async function updateSightingFlagInFirestore(
+  sightingId: string,
+  auditEntry: AuditEntry
 ): Promise<void> {
   try {
     const docRef = doc(db, SIGHTINGS_COLLECTION, sightingId);
     await updateDoc(docRef, {
-      corroborations: arrayUnion(corroboration),
-      verificationStatus: 'Corroborated by Peers'
+      verificationStatus: 'Flagged for Review',
+      auditTrail: arrayUnion(JSON.parse(JSON.stringify(auditEntry))),
     });
   } catch (err) {
-    console.error('Error adding corroboration in Firestore:', err);
+    console.error('Error flagging sighting in Firestore:', err);
     throw err;
   }
 }

@@ -28,6 +28,7 @@ import { tacticalAudio } from '../utils/audio';
 import { 
   getSightingRecency, 
   getRecencyCounts, 
+  getUkTimeZoneLabel,
   RecencyWindow, 
   TRAFFIC_LIGHT_TIERS 
 } from '../utils/recency';
@@ -585,7 +586,7 @@ export const SightingLogger: React.FC<SightingLoggerProps> = ({
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {sighting.date} at {sighting.time} BST
+                          <Clock className="w-3 h-3" /> {sighting.date} at {sighting.time} {getUkTimeZoneLabel(sighting.timestamp)}
                         </span>
                         <span>•</span>
                         <span className="text-[11px] text-neutral-400 italic">
