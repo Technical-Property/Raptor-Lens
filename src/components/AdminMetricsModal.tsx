@@ -1383,7 +1383,7 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                           type="button"
                           onClick={() => {
                             const key = adminStreamKey || '<YOUR_STREAM_KEY>';
-                            const cmd = `ffmpeg -thread_queue_size 4096 -rtsp_transport tcp -i "rtsp://CAMERA_USER:CAMERA_PASS@CAMERA_IP:554/Streaming/Channels/101" -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -map 0:v:0 -map 1:a:0 -vf "setpts=PTS-STARTPTS" -af "asetpts=PTS-STARTPTS" -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -r 25 -g 50 -c:a aac -b:a 128k -ar 44100 -shortest -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
+                            const cmd = `ffmpeg -nostdin -loglevel info -rtsp_transport tcp -analyzeduration 10M -probesize 10M -fflags +genpts -thread_queue_size 4096 -i "rtsp://CAMERA_USER:CAMERA_PASS@CAMERA_IP:554/Streaming/Channels/101" -re -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -map 0:v:0 -map 1:a:0 -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -r 25 -g 50 -keyint_min 50 -sc_threshold 0 -b:v 3000k -maxrate 3000k -bufsize 6000k -c:a aac -b:a 128k -ar 44100 -shortest -f flv "rtmp://a.rtmp.youtube.com/live2/${key}"`;
                             navigator.clipboard.writeText(cmd);
                             tacticalAudio.playConfirmChime();
                             showToast('✓ Copied sanitized RTSP FFmpeg template!');
@@ -1395,11 +1395,15 @@ export const AdminMetricsModal: React.FC<AdminMetricsModalProps> = ({
                         </button>
                       </div>
                       <pre className="text-neutral-300 overflow-x-auto text-[10px] bg-neutral-900 p-2.5 rounded border border-neutral-850 whitespace-pre-wrap break-all leading-relaxed">
-{`ffmpeg -thread_queue_size 4096 -rtsp_transport tcp \\
+{`ffmpeg -nostdin -loglevel info \\
+  -rtsp_transport tcp -analyzeduration 10M -probesize 10M -fflags +genpts \\
+  -thread_queue_size 4096 \\
   -i "rtsp://CAMERA_USER:CAMERA_PASS@CAMERA_IP:554/Streaming/Channels/101" \\
-  -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
-  -map 0:v:0 -map 1:a:0 -vf "setpts=PTS-STARTPTS" -af "asetpts=PTS-STARTPTS" \\
-  -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k -pix_fmt yuv420p -r 25 -g 50 \\
+  -re -thread_queue_size 4096 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \\
+  -map 0:v:0 -map 1:a:0 \\
+  -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p \\
+  -r 25 -g 50 -keyint_min 50 -sc_threshold 0 \\
+  -b:v 3000k -maxrate 3000k -bufsize 6000k \\
   -c:a aac -b:a 128k -ar 44100 -shortest \\
   -f flv "rtmp://a.rtmp.youtube.com/live2/${showRawKey ? (adminStreamKey || '<YOUR_STREAM_KEY>') : maskStreamKey(adminStreamKey)}"`}
                       </pre>
